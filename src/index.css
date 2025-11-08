@@ -1,0 +1,29 @@
+/* Tailwind CSSの基本スタイルをインポート */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* その他のグローバルスタイルがあればここに追加 */
+body {
+  font-family: "Inter", sans-serif; /* Interフォントを使用（Tailwindで指定された場合） */
+}
+
+/* アプリ全体のメッセージ表示用のアニメーション */
+@keyframes fade-in-out {
+  0% { opacity: 0; transform: translateY(-20px); -webkit-transform: translateY(-20px); }
+  10% { opacity: 1; transform: translateY(0); -webkit-transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); -webkit-transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); -webkit-transform: translateY(-20px); }
+}
+
+@-webkit-keyframes fade-in-out {
+  0% { opacity: 0; -webkit-transform: translateY(-20px); }
+  10% { opacity: 1; -webkit-transform: translateY(0); }
+  90% { opacity: 1; -webkit-transform: translateY(0); }
+  100% { opacity: 0; -webkit-transform: translateY(-20px); }
+}
+
+.animate-fade-in-out {
+  animation: fade-in-out 3s ease-in-out forwards;
+  -webkit-animation: fade-in-out 3s ease-in-out forwards;
+}
