@@ -1,8 +1,8 @@
-// /api/api-lib/_db.js
+// /api/api-lib/_db.js 
 import pkg from "pg";
 const { Pool } = pkg;
 
-// データベース接続文字列の検証
+// データベース接続文字列の検証1
 if (!process.env.DATABASE_URL) {
   console.error("❌ エラー: DATABASE_URL環境変数が設定されていません。");
   console.error("📝 .envファイルを作成して、DATABASE_URLを設定してください。");
