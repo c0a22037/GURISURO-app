@@ -89,6 +89,8 @@ export default function MainApp() {
   const [userSettings, setUserSettings] = useState({
     notifications_enabled: true,
   });
+  const [participationStats, setParticipationStats] = useState(null); // 参加回数統計
+  const [monthlyStats, setMonthlyStats] = useState([]); // 月別参加回数
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -277,12 +279,36 @@ export default function MainApp() {
     }
   }, [userName, handleNetworkError]);
 
+  // ---- 参加回数統計取得 ----
+  const refreshParticipationStats = useCallback(async () => {
+    if (!userName) {
+      setParticipationStats(null);
+      setMonthlyStats([]);
+      return;
+    }
+    try {
+      const res = await apiFetch(`/api?path=participation-stats`, {}, handleNetworkError);
+      if (res.ok && res.data) {
+        setParticipationStats(res.data.stats || null);
+        setMonthlyStats(Array.isArray(res.data.monthly) ? res.data.monthly : []);
+      } else {
+        setParticipationStats(null);
+        setMonthlyStats([]);
+      }
+    } catch (e) {
+      console.error("participation stats fetch error:", e);
+      setParticipationStats(null);
+      setMonthlyStats([]);
+    }
+  }, [userName, handleNetworkError]);
+
   useEffect(() => {
     if (activeTab === "mypage") {
       refreshUserSettings();
       refreshApplicationHistory();
+      refreshParticipationStats();
     }
-  }, [activeTab, refreshUserSettings, refreshApplicationHistory]);
+  }, [activeTab, refreshUserSettings, refreshApplicationHistory, refreshParticipationStats]);
 
 
   // ---- 通知を既読にする ----
@@ -685,6 +711,110 @@ export default function MainApp() {
             />
             <span className="text-sm">確定通知を有効にする</span>
           </label>
+        </div>
+      </div>
+
+      {/* 参加履歴（累計参加回数） */}
+      <div className="mb-6">
+        <h3 className="font-semibold mb-2">参加履歴</h3>
+        <div className="border rounded p-4 bg-gradient-to-br from-blue-50 to-green-50">
+          {participationStats ? (
+            <div className="space-y-4">
+              {/* 累計参加回数 */}
+              <div className="text-center">
+                <div className="text-4xl font-bold text-blue-600 mb-1">
+                  {participationStats.total}
+                </div>
+                <div className="text-sm text-gray-600">累計参加回数</div>
+              </div>
+
+              {/* 役割別の参加回数 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-lg p-3 border border-blue-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl">🚗</span>
+                    <span className="text-xs text-gray-600">運転手</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {participationStats.driver}
+                  </div>
+                  <div className="text-xs text-gray-500">回</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-green-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl">👤</span>
+                    <span className="text-xs text-gray-600">添乗員</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {participationStats.attendant}
+                  </div>
+                  <div className="text-xs text-gray-500">回</div>
+                </div>
+              </div>
+
+              {/* その他の統計情報 */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-white rounded p-2 border">
+                  <div className="text-gray-600">参加イベント数</div>
+                  <div className="font-semibold text-gray-800">{participationStats.unique_events}件</div>
+                </div>
+                {participationStats.first_participation && (
+                  <div className="bg-white rounded p-2 border">
+                    <div className="text-gray-600">初回参加</div>
+                    <div className="font-semibold text-gray-800">
+                      {new Date(participationStats.first_participation).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short' })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 月別参加回数のグラフ（簡易版） */}
+              {monthlyStats.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-xs text-gray-600 mb-2">直近12ヶ月の参加回数</div>
+                  <div className="space-y-1">
+                    {monthlyStats.slice(0, 6).map((month, idx) => {
+                      const maxCount = Math.max(...monthlyStats.map(m => m.count), 1);
+                      const percentage = (month.count / maxCount) * 100;
+                      const monthName = new Date(month.month).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short' });
+                      return (
+                        <div key={idx} className="flex items-center gap-2">
+                          <div className="text-xs text-gray-600 w-16 text-right">{monthName}</div>
+                          <div className="flex-1 bg-gray-200 rounded-full h-4 relative overflow-hidden">
+                            <div
+                              className="bg-gradient-to-r from-blue-400 to-green-400 h-full rounded-full transition-all"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <div className="text-xs font-semibold text-gray-700 w-8 text-right">{month.count}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* やる気向上メッセージ */}
+              {participationStats.total > 0 && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="text-sm font-semibold text-yellow-800 mb-1">
+                    {participationStats.total >= 10 ? "🌟 素晴らしい活動です！" :
+                     participationStats.total >= 5 ? "✨ 順調に参加されています！" :
+                     "💪 これからも頑張りましょう！"}
+                  </div>
+                  <div className="text-xs text-yellow-700">
+                    {participationStats.total >= 10 ? "継続的な参加、ありがとうございます！" :
+                     participationStats.total >= 5 ? "積極的な参加がチームを支えています！" :
+                     "参加回数を増やして、チームに貢献しましょう！"}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <div className="text-gray-500 text-sm">参加履歴を読み込み中...</div>
+            </div>
+          )}
         </div>
       </div>
 
