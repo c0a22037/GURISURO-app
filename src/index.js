@@ -82,3 +82,16 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       });
   });
 }
+// api/index.js
+import http from "http"
+import handler from "./api-lib/index.js"
+
+const PORT = process.env.PORT || 3001
+
+const server = http.createServer((req, res) => {
+  handler(req, res)
+})
+
+server.listen(PORT, () => {
+  console.log(`🚀 API Server running on http://localhost:${PORT}`)
+})
