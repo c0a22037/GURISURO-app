@@ -2,7 +2,7 @@
 import { query, healthcheck } from "./_db.js";
 import crypto from "crypto";
 
-// ===== CORS 共通ヘッダ =====oo
+// ===== CORS 共通ヘッダ =====
 function withCORS(req, res) {
   // 本番URLを明示指定
   res.setHeader("Access-Control-Allow-Origin", "https://gurisuro-schedule-app.vercel.app");
