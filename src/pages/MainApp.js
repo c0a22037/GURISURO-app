@@ -299,14 +299,40 @@ export default function MainApp() {
       return
     }
     try {
-      const res = await apiFetch(`/api/selections?username=${encodeURIComponent(userName)}`, {}, handleNetworkError)
-      if (res.ok && Array.isArray(res.data)) {
-        setParticipationHistory(res.data)
+      const res = await apiFetch(`/api?path=selections&username=${encodeURIComponent(userName)}`, {}, handleNetworkError)
+      console.log("Participation history response:", res) // デバッグ用
+      
+      // APIレスポンスの形式を確認してデータを取得
+      let data = null
+      if (res.ok) {
+        // res.dataが直接配列の場合
+        if (Array.isArray(res.data)) {
+          data = res.data
+        }
+        // res.data.dataが配列の場合（APIの形式による）
+        else if (res.data && Array.isArray(res.data.data)) {
+          data = res.data.data
+        }
+      }
+      
+      if (data && Array.isArray(data)) {
+        setParticipationHistory(data)
 
         // 日付ごとにグループ化して重複を除外（同じ日に運転手と添乗員両方で参加した場合は1日としてカウント）
-        const uniqueDates = new Set(res.data.map((item) => item.date).filter((date) => date))
-        setParticipationCount(uniqueDates.size)
+        const dates = data.map((item) => item.date).filter((date) => date && date.trim() !== "")
+        const uniqueDates = new Set(dates)
+        const count = uniqueDates.size
+        
+        console.log("Participation dates:", Array.from(uniqueDates)) // デバッグ用
+        console.log("Participation count:", count) // デバッグ用
+        
+        setParticipationCount(count)
         setParticipationDates(uniqueDates)
+      } else {
+        console.warn("Invalid data format:", res.data)
+        setParticipationHistory([])
+        setParticipationCount(0)
+        setParticipationDates(new Set())
       }
     } catch (e) {
       console.error("participation history fetch error:", e)
@@ -828,7 +854,7 @@ export default function MainApp() {
         <div className="border-2 border-emerald-500 rounded-lg p-6 bg-gradient-to-br from-emerald-50 to-green-50 text-center">
           <div className="text-6xl font-extrabold text-emerald-600 mb-2">{participationCount}</div>
           <div className="text-lg font-medium text-gray-700">日間</div>
-          <div className="text-sm text-gray-500 mt-2">イベントに参加した日数</div>
+          <div className="text-sm text-gray-500 mt-2">活動に参加した日数</div>
         </div>
       </div>
 
