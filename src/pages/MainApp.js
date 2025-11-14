@@ -881,7 +881,7 @@ export default function MainApp() {
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        確定日: {new Date(item.created_at).toLocaleString("ja-JP")}
+                        確定日: {item.decided_at ? new Date(item.decided_at).toLocaleString("ja-JP") : "不明"}
                       </div>
                     </div>
                   </div>

@@ -1576,6 +1576,55 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
+    // ---- /api/selections ---- ユーザーの参加確定履歴を取得
+    if (sub === "selections") {
+      if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
+
+      const username = q.get("username");
+      if (!username) return res.status(400).json({ error: "username が必要です" });
+
+      try {
+        // selectionsテーブルとeventsテーブルをJOINして、イベント情報を含めて取得
+        const sql = `
+          SELECT 
+            s.event_id,
+            s.username,
+            s.kind,
+            s.decided_at,
+            e.date,
+            e.label,
+            e.icon,
+            e.start_time,
+            e.end_time
+          FROM selections s
+          LEFT JOIN events e ON s.event_id = e.id
+          WHERE s.username = $1
+          ORDER BY e.date DESC, s.decided_at DESC
+        `;
+        const result = await query(sql, [username]);
+        
+        // フロントエンドで使いやすい形式に変換
+        const formatted = result.rows.map(row => ({
+          id: `${row.event_id}-${row.kind}`,
+          event_id: row.event_id,
+          username: row.username,
+          role: row.kind, // kindをroleとして返す（フロントエンドの互換性のため）
+          kind: row.kind,
+          date: row.date,
+          label: row.label,
+          icon: row.icon,
+          start_time: row.start_time,
+          end_time: row.end_time,
+          decided_at: row.decided_at,
+        }));
+
+        return res.status(200).json(formatted);
+      } catch (err) {
+        console.error("[selections] Error:", err);
+        return res.status(500).json({ error: "参加履歴の取得に失敗しました: " + (err?.message || String(err)) });
+      }
+    }
+
     // ---- その他 404 ----
     return res.status(404).json({ error: "Not Found" });
   } catch (err) {
