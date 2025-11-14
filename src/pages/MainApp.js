@@ -318,12 +318,25 @@ export default function MainApp() {
       if (data && Array.isArray(data)) {
         setParticipationHistory(data)
 
+        // 今日の日付を取得（YYYY-MM-DD形式）
+        const today = toLocalYMD(new Date())
+        
         // 日付ごとにグループ化して重複を除外（同じ日に運転手と添乗員両方で参加した場合は1日としてカウント）
-        const dates = data.map((item) => item.date).filter((date) => date && date.trim() !== "")
+        // かつ、今日以前の日付のみをカウント（未来の日付は除外）
+        const dates = data
+          .map((item) => item.date)
+          .filter((date) => {
+            // 日付が存在し、空文字でない
+            if (!date || date.trim() === "") return false
+            // 今日以前の日付のみ（未来の日付は除外）
+            return date <= today
+          })
+        
         const uniqueDates = new Set(dates)
         const count = uniqueDates.size
         
-        console.log("Participation dates:", Array.from(uniqueDates)) // デバッグ用
+        console.log("Today:", today) // デバッグ用
+        console.log("Participation dates (past and today only):", Array.from(uniqueDates).sort()) // デバッグ用
         console.log("Participation count:", count) // デバッグ用
         
         setParticipationCount(count)
