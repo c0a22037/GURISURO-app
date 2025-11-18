@@ -953,49 +953,63 @@ export default function MainApp() {
     </div>
   )
 
-  // 実績バッジ判定
-  const badges = useMemo(() => {
-    const list = []
-    const total = participationStats.totalDays
-    const { driver, attendant } = participationStats.totalByRole
-
-    if (total >= 1) {
-      list.push({
+  // バッジ定義（全バッジ）
+  const allBadges = useMemo(
+    () => [
+      {
         id: "first",
         label: "初参加バッジ",
         description: "初めて活動に参加しました。",
-      })
-    }
-    if (total >= 5) {
-      list.push({
+        minTotalDays: 1,
+      },
+      {
         id: "go5",
         label: "がんばり隊",
         description: "5日以上活動に参加しています。",
-      })
-    }
-    if (total >= 10) {
-      list.push({
+        minTotalDays: 5,
+      },
+      {
         id: "leader10",
         label: "頼れるサポーター",
         description: "10日以上活動に参加しています。",
-      })
-    }
-    if (driver >= 1) {
-      list.push({
+        minTotalDays: 10,
+      },
+      {
         id: "driver1",
         label: "運転サポーター",
         description: "運転手として活動に参加したことがあります。",
-      })
-    }
-    if (attendant >= 1) {
-      list.push({
+        role: "driver",
+        minRoleCount: 1,
+      },
+      {
         id: "attendant1",
         label: "添乗サポーター",
         description: "添乗員として活動に参加したことがあります。",
-      })
-    }
-    return list
-  }, [participationStats])
+        role: "attendant",
+        minRoleCount: 1,
+      },
+    ],
+    [],
+  )
+
+  // 獲得済みバッジ判定
+  const badges = useMemo(() => {
+    const total = participationStats.totalDays
+    const { driver, attendant } = participationStats.totalByRole
+
+    return allBadges.filter((badge) => {
+      if (badge.minTotalDays != null && total < badge.minTotalDays) return false
+      if (badge.role === "driver" && (badge.minRoleCount || 0) > driver) return false
+      if (badge.role === "attendant" && (badge.minRoleCount || 0) > attendant) return false
+      return true
+    })
+  }, [participationStats, allBadges])
+
+  // 未獲得バッジ一覧
+  const unearnedBadges = useMemo(
+    () => allBadges.filter((badge) => !badges.some((b) => b.id === badge.id)),
+    [allBadges, badges],
+  )
 
   // 励ましメッセージ判定
   const encouragement = useMemo(() => {
@@ -1110,6 +1124,31 @@ export default function MainApp() {
                 <div className="flex-1">
                   <div className="text-sm font-semibold text-amber-800">{badge.label}</div>
                   <div className="text-xs text-amber-700 mt-1">{badge.description}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 未獲得バッジ */}
+      <div className="mb-6">
+        <h2 className="font-semibold mb-2">未獲得のバッジ</h2>
+        {unearnedBadges.length === 0 ? (
+          <p className="text-sm text-gray-500 border rounded p-3">
+            すべてのバッジを獲得しています。継続的なご活動、ありがとうございます。
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {unearnedBadges.map((badge) => (
+              <div
+                key={badge.id}
+                className="border border-dashed border-gray-300 rounded-lg p-3 bg-gray-50 flex items-start gap-2"
+              >
+                <div className="text-xl">🎯</div>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-gray-800">{badge.label}</div>
+                  <div className="text-xs text-gray-600 mt-1">{badge.description}</div>
                 </div>
               </div>
             ))}
