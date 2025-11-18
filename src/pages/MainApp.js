@@ -1032,10 +1032,40 @@ export default function MainApp() {
   }, [participationStats, allBadges])
 
   // 未獲得バッジ一覧
-  const unearnedBadges = useMemo(
-    () => allBadges.filter((badge) => !badges.some((b) => b.id === badge.id)),
-    [allBadges, badges],
-  )
+  const unearnedBadges = useMemo(() => {
+    // まだ獲得していないバッジだけを対象にする
+    const remaining = allBadges.filter((badge) => !badges.some((b) => b.id === badge.id))
+    if (remaining.length === 0) return []
+
+    const total = participationStats.totalDays
+    const { driver, attendant } = participationStats.totalByRole
+
+    // 各バッジについて「あと何回/何日で達成か」を計算
+    const withDistance = remaining
+      .map((badge) => {
+        let needed = Infinity
+        if (badge.minTotalDays != null) {
+          needed = Math.max(0, badge.minTotalDays - total)
+        }
+        if (badge.role === "driver" && badge.minRoleCount != null) {
+          needed = Math.max(0, badge.minRoleCount - driver)
+        }
+        if (badge.role === "attendant" && badge.minRoleCount != null) {
+          needed = Math.max(0, badge.minRoleCount - attendant)
+        }
+        return { badge, needed }
+      })
+      .filter((x) => x.needed > 0 && x.needed < Infinity)
+
+    if (withDistance.length === 0) return []
+
+    // 最小の「あと◯回/◯日」のバッジを目標として表示（2件まで）
+    const minNeeded = withDistance.reduce((min, x) => (x.needed < min ? x.needed : min), withDistance[0].needed)
+    return withDistance
+      .filter((x) => x.needed === minNeeded)
+      .slice(0, 2)
+      .map((x) => x.badge)
+  }, [allBadges, badges, participationStats])
 
   // 励ましメッセージ判定
   const encouragement = useMemo(() => {
@@ -1173,9 +1203,9 @@ export default function MainApp() {
         )}
       </div>
 
-      {/* 未獲得バッジ */}
+      {/* 次の目標バッジ */}
       <div className="mb-6">
-        <h2 className="font-semibold mb-2">未獲得のバッジ</h2>
+        <h2 className="font-semibold mb-2">次の目標バッジ</h2>
         {unearnedBadges.length === 0 ? (
           <p className="text-sm text-gray-500 border rounded p-3">
             すべてのバッジを獲得しています。継続的なご活動、ありがとうございます。
