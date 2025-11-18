@@ -107,7 +107,6 @@ export default function MainApp() {
     bestMonthDays: 0,
   })
   const [participationMonthlyStats, setParticipationMonthlyStats] = useState([]) // [{ month: 'YYYY-MM', days: number }]
-  const [showAllBadges, setShowAllBadges] = useState(false) // 未獲得バッジ一覧の折り畳み表示
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -990,7 +989,7 @@ export default function MainApp() {
       {
         id: "driver1",
         label: "運転サポーター",
-        description: "運転手として活動に参加したことがあります。",
+        description: "運転手として活動に参加したことがある。",
         role: "driver",
         minRoleCount: 1,
       },
@@ -1004,7 +1003,7 @@ export default function MainApp() {
       {
         id: "attendant1",
         label: "添乗サポーター",
-        description: "添乗員として活動に参加したことがあります。",
+        description: "添乗員として活動に参加したことがある。",
         role: "attendant",
         minRoleCount: 1,
       },
@@ -1033,43 +1032,7 @@ export default function MainApp() {
   }, [participationStats, allBadges])
 
   // 未獲得バッジ一覧
-  const unearnedBadges = useMemo(() => {
-    // まだ獲得していないバッジだけを対象にする
-    const remaining = allBadges.filter((badge) => !badges.some((b) => b.id === badge.id))
-    if (remaining.length === 0) return []
-
-    const total = participationStats.totalDays
-    const { driver, attendant } = participationStats.totalByRole
-
-    // 各バッジについて「あと何回/何日で達成か」を計算
-    const withDistance = remaining
-      .map((badge) => {
-        let needed = Infinity
-        if (badge.minTotalDays != null) {
-          needed = Math.max(0, badge.minTotalDays - total)
-        }
-        if (badge.role === "driver" && badge.minRoleCount != null) {
-          needed = Math.max(0, badge.minRoleCount - driver)
-        }
-        if (badge.role === "attendant" && badge.minRoleCount != null) {
-          needed = Math.max(0, badge.minRoleCount - attendant)
-        }
-        return { badge, needed }
-      })
-      .filter((x) => x.needed > 0 && x.needed < Infinity)
-
-    if (withDistance.length === 0) return []
-
-    // 最小の「あと◯回/◯日」のバッジを目標として表示（2件まで）
-    const minNeeded = withDistance.reduce((min, x) => (x.needed < min ? x.needed : min), withDistance[0].needed)
-    return withDistance
-      .filter((x) => x.needed === minNeeded)
-      .slice(0, 2)
-      .map((x) => x.badge)
-  }, [allBadges, badges, participationStats])
-
-  // すべての未獲得バッジ（折り畳み表示用）
-  const allRemainingBadges = useMemo(
+  const unearnedBadges = useMemo(
     () => allBadges.filter((badge) => !badges.some((b) => b.id === badge.id)),
     [allBadges, badges],
   )
@@ -1210,9 +1173,9 @@ export default function MainApp() {
         )}
       </div>
 
-      {/* 次の目標バッジ */}
+      {/* 未獲得バッジ */}
       <div className="mb-6">
-        <h2 className="font-semibold mb-2">次の目標バッジ</h2>
+        <h2 className="font-semibold mb-2">未獲得のバッジ</h2>
         {unearnedBadges.length === 0 ? (
           <p className="text-sm text-gray-500 border rounded p-3">
             すべてのバッジを獲得しています。継続的なご活動、ありがとうございます。
@@ -1231,35 +1194,6 @@ export default function MainApp() {
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* 折り畳み式の未獲得バッジ一覧 */}
-        {allRemainingBadges.length > 0 && (
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => setShowAllBadges((v) => !v)}
-              className="text-xs px-3 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50"
-            >
-              {showAllBadges ? "未獲得バッジ一覧を閉じる" : "タップして未獲得バッジ一覧を表示"}
-            </button>
-            {showAllBadges && (
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {allRemainingBadges.map((badge) => (
-                  <div
-                    key={badge.id}
-                    className="border border-dashed border-gray-300 rounded-lg p-3 bg-gray-50 flex items-start gap-2"
-                  >
-                    <div className="text-xl">🎯</div>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-gray-800">{badge.label}</div>
-                      <div className="text-xs text-gray-600 mt-1">{badge.description}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </div>
