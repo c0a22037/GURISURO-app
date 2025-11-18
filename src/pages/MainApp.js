@@ -9,7 +9,7 @@ import Toast from "../components/Toast.js"
 import ConfirmDialog from "../components/ConfirmDialog.js"
 import { useToast } from "../hooks/useToast.js"
 import { useConfirmDialog } from "../hooks/useConfirmDialog.js"
-import { toLocalYMD } from "../lib/date.js"
+import { toLocalYMD, parseYMD } from "../lib/date.js"
 
 // JSON/text どちらも耐える fetch（ネットワークエラー検知付き）
 async function apiFetch(url, options = {}, onNetworkError) {
@@ -97,6 +97,16 @@ export default function MainApp() {
   const [participationHistory, setParticipationHistory] = useState([]) // 確定された参加履歴
   const [participationCount, setParticipationCount] = useState(0) // 累計活動日数
   const [participationDates, setParticipationDates] = useState(new Set()) // 参加した日付のSet
+  const [participationStats, setParticipationStats] = useState({
+    totalDays: 0,
+    totalByRole: { driver: 0, attendant: 0 },
+    currentStreak: 0,
+    longestStreak: 0,
+    thisMonthDays: 0,
+    lastMonthDays: 0,
+    bestMonthDays: 0,
+  })
+  const [participationMonthlyStats, setParticipationMonthlyStats] = useState([]) // [{ month: 'YYYY-MM', days: number }]
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -296,6 +306,16 @@ export default function MainApp() {
       setParticipationHistory([])
       setParticipationCount(0)
       setParticipationDates(new Set())
+      setParticipationStats({
+        totalDays: 0,
+        totalByRole: { driver: 0, attendant: 0 },
+        currentStreak: 0,
+        longestStreak: 0,
+        thisMonthDays: 0,
+        lastMonthDays: 0,
+        bestMonthDays: 0,
+      })
+      setParticipationMonthlyStats([])
       return
     }
     try {
@@ -341,11 +361,85 @@ export default function MainApp() {
         
         setParticipationCount(count)
         setParticipationDates(uniqueDates)
+
+        // 役割別参加回数（イベント単位のシンプルなカウント）
+        const driverCount = data.filter((item) => item.role === "driver" || item.kind === "driver").length
+        const attendantCount = data.filter((item) => item.role === "attendant" || item.kind === "attendant").length
+
+        // 月ごとの参加日数（ユニーク日付ベース）
+        const monthlyMap = new Map() // monthKey -> Set of dates
+        for (const date of uniqueDates) {
+          const monthKey = date.slice(0, 7) // YYYY-MM
+          if (!monthlyMap.has(monthKey)) {
+            monthlyMap.set(monthKey, new Set())
+          }
+          monthlyMap.get(monthKey).add(date)
+        }
+        const monthlyArray = Array.from(monthlyMap.entries()).map(([month, daySet]) => ({
+          month,
+          days: daySet.size,
+        }))
+        // 新しい順（降順）
+        monthlyArray.sort((a, b) => b.month.localeCompare(a.month))
+
+        const todayDate = parseYMD(today)
+        const thisMonthKey = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}`
+        const lastMonthDate = new Date(todayDate.getFullYear(), todayDate.getMonth() - 1, 1)
+        const lastMonthKey = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}`
+
+        const thisMonthDays = monthlyMap.get(thisMonthKey)?.size || 0
+        const lastMonthDays = monthlyMap.get(lastMonthKey)?.size || 0
+        const bestMonthDays = monthlyArray.reduce((max, m) => (m.days > max ? m.days : max), 0)
+
+        // 連続参加ストリークを計算（ユニーク日付を昇順にソート）
+        const sortedDates = Array.from(uniqueDates).sort()
+        let currentStreak = 0
+        let longestStreak = 0
+        let prevDateObj = null
+        for (const d of sortedDates) {
+          const currentDateObj = parseYMD(d)
+          if (!prevDateObj) {
+            currentStreak = 1
+          } else {
+            const diffMs = currentDateObj.getTime() - prevDateObj.getTime()
+            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+            if (diffDays === 1) {
+              currentStreak += 1
+            } else {
+              currentStreak = 1
+            }
+          }
+          if (currentStreak > longestStreak) {
+            longestStreak = currentStreak
+          }
+          prevDateObj = currentDateObj
+        }
+
+        setParticipationStats({
+          totalDays: count,
+          totalByRole: { driver: driverCount, attendant: attendantCount },
+          currentStreak,
+          longestStreak,
+          thisMonthDays,
+          lastMonthDays,
+          bestMonthDays,
+        })
+        setParticipationMonthlyStats(monthlyArray)
       } else {
         console.warn("Invalid data format:", res.data)
         setParticipationHistory([])
         setParticipationCount(0)
         setParticipationDates(new Set())
+        setParticipationStats({
+          totalDays: 0,
+          totalByRole: { driver: 0, attendant: 0 },
+          currentStreak: 0,
+          longestStreak: 0,
+          thisMonthDays: 0,
+          lastMonthDays: 0,
+          bestMonthDays: 0,
+        })
+        setParticipationMonthlyStats([])
       }
     } catch (e) {
       console.error("participation history fetch error:", e)
@@ -859,7 +953,97 @@ export default function MainApp() {
     </div>
   )
 
-  // 参加履歴タブの内容を追加
+  // 実績バッジ判定
+  const badges = useMemo(() => {
+    const list = []
+    const total = participationStats.totalDays
+    const { driver, attendant } = participationStats.totalByRole
+
+    if (total >= 1) {
+      list.push({
+        id: "first",
+        label: "初参加バッジ",
+        description: "初めて活動に参加しました。",
+      })
+    }
+    if (total >= 5) {
+      list.push({
+        id: "go5",
+        label: "がんばり隊",
+        description: "5日以上活動に参加しています。",
+      })
+    }
+    if (total >= 10) {
+      list.push({
+        id: "leader10",
+        label: "頼れるサポーター",
+        description: "10日以上活動に参加しています。",
+      })
+    }
+    if (driver >= 1) {
+      list.push({
+        id: "driver1",
+        label: "運転サポーター",
+        description: "運転手として活動に参加したことがあります。",
+      })
+    }
+    if (attendant >= 1) {
+      list.push({
+        id: "attendant1",
+        label: "添乗サポーター",
+        description: "添乗員として活動に参加したことがあります。",
+      })
+    }
+    return list
+  }, [participationStats])
+
+  // 励ましメッセージ判定
+  const encouragement = useMemo(() => {
+    const { totalDays, currentStreak, thisMonthDays, lastMonthDays } = participationStats
+    const MONTHLY_GOAL = 3
+
+    if (totalDays === 0) {
+      return {
+        title: "はじめの一歩を踏み出してみませんか？",
+        body: "まだ活動参加の記録はありません。ご都合の良い日から、無理のないペースで参加してみてください。",
+      }
+    }
+
+    if (thisMonthDays === 0) {
+      return {
+        title: "今月の最初の活動を計画してみましょう",
+        body: "これまでのご協力ありがとうございます。今月も1日から、少しずつ活動に参加していただけると嬉しいです。",
+      }
+    }
+
+    if (thisMonthDays >= MONTHLY_GOAL) {
+      return {
+        title: "今月の目標を達成しました！",
+        body: "今月も安定したご活動ありがとうございます。無理のない範囲で、これからもよろしくお願いします。",
+      }
+    }
+
+    if (currentStreak >= 3) {
+      return {
+        title: "連続参加、ありがとうございます！",
+        body: `${currentStreak}日連続で活動に参加しています。この調子で、休みつつ長く続けていけると素晴らしいですね。`,
+      }
+    }
+
+    if (thisMonthDays > lastMonthDays && lastMonthDays > 0) {
+      return {
+        title: "先月よりも活動日数が増えています！",
+        body: `先月よりも今月の活動日数が増えています。少しずつの積み重ねが、大きな支えになっています。`,
+      }
+    }
+
+    return {
+      title: "いつもありがとうございます",
+      body: "ご都合のつく範囲で活動に参加していただき、ありがとうございます。無理なく、長く続けていただけると嬉しいです。",
+    }
+  }, [participationStats])
+
+  // 参加状況タブの内容を追加
   const renderParticipationTab = () => (
     <div>
       <div className="mb-6">
@@ -869,6 +1053,68 @@ export default function MainApp() {
           <div className="text-lg font-medium text-gray-700">日間</div>
           <div className="text-sm text-gray-500 mt-2">活動に参加した日数</div>
         </div>
+      </div>
+
+      {/* ストリーク + 目標達成度 */}
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="border rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">連続活動日数</h3>
+          <p className="text-sm text-gray-600">
+            現在: <span className="font-semibold text-emerald-700">{participationStats.currentStreak}</span> 日
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            最長: <span className="font-semibold text-gray-700">{participationStats.longestStreak}</span> 日
+          </p>
+        </div>
+
+        <div className="border rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">今月の目標</h3>
+          {(() => {
+            const MONTHLY_GOAL = 3
+            const done = participationStats.thisMonthDays
+            const ratio = Math.min(1, MONTHLY_GOAL === 0 ? 0 : done / MONTHLY_GOAL)
+            const percent = Math.round(ratio * 100)
+            return (
+              <>
+                <p className="text-sm text-gray-600 mb-1">
+                  今月 {done}/{MONTHLY_GOAL} 日
+                </p>
+                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">達成度: {percent}%</p>
+              </>
+            )
+          })()}
+        </div>
+      </div>
+
+      {/* 実績バッジ */}
+      <div className="mb-6">
+        <h2 className="font-semibold mb-2">あなたのバッジ</h2>
+        {badges.length === 0 ? (
+          <p className="text-sm text-gray-500 border rounded p-3">
+            まだバッジはありません。活動に参加すると、ここにバッジが増えていきます。
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {badges.map((badge) => (
+              <div
+                key={badge.id}
+                className="border border-amber-200 rounded-lg p-3 bg-amber-50 flex items-start gap-2"
+              >
+                <div className="text-xl">🏅</div>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-amber-800">{badge.label}</div>
+                  <div className="text-xs text-amber-700 mt-1">{badge.description}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mb-6">
@@ -929,6 +1175,22 @@ export default function MainApp() {
             })}
           </div>
         )}
+      </div>
+
+      {/* 励ましメッセージ */}
+      <div className="mt-6">
+        <div className="border-l-4 border-emerald-400 bg-emerald-50 px-4 py-3 rounded">
+          <div className="text-sm font-semibold text-emerald-800 mb-1">{encouragement.title}</div>
+          <div className="text-xs text-emerald-800 leading-relaxed">{encouragement.body}</div>
+          {participationStats.thisMonthDays > 0 && (
+            <div className="text-[11px] text-emerald-700 mt-2">
+              今月の活動日数: {participationStats.thisMonthDays}日
+              {participationStats.lastMonthDays > 0 && (
+                <>（先月: {participationStats.lastMonthDays}日）</>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
