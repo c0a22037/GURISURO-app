@@ -1132,6 +1132,22 @@ export default function MainApp() {
         </div>
       </div>
 
+      {/* 励ましメッセージ */}
+      <div className="mb-6">
+        <div className="border-l-4 border-emerald-400 bg-emerald-50 px-4 py-3 rounded">
+          <div className="text-sm font-semibold text-emerald-800 mb-1">{encouragement.title}</div>
+          <div className="text-xs text-emerald-800 leading-relaxed">{encouragement.body}</div>
+          {participationStats.thisMonthDays > 0 && (
+            <div className="text-[11px] text-emerald-700 mt-2">
+              今月の活動日数: {participationStats.thisMonthDays}日
+              {participationStats.lastMonthDays > 0 && (
+                <>（先月: {participationStats.lastMonthDays}日）</>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 実績バッジ */}
       <div className="mb-6">
         <h2 className="font-semibold mb-2">あなたのバッジ</h2>
@@ -1240,22 +1256,6 @@ export default function MainApp() {
             })}
           </div>
         )}
-      </div>
-
-      {/* 励ましメッセージ */}
-      <div className="mt-6">
-        <div className="border-l-4 border-emerald-400 bg-emerald-50 px-4 py-3 rounded">
-          <div className="text-sm font-semibold text-emerald-800 mb-1">{encouragement.title}</div>
-          <div className="text-xs text-emerald-800 leading-relaxed">{encouragement.body}</div>
-          {participationStats.thisMonthDays > 0 && (
-            <div className="text-[11px] text-emerald-700 mt-2">
-              今月の活動日数: {participationStats.thisMonthDays}日
-              {participationStats.lastMonthDays > 0 && (
-                <>（先月: {participationStats.lastMonthDays}日）</>
-              )}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )
