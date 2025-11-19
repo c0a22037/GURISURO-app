@@ -92,6 +92,7 @@ export default function MainApp() {
   const [showHistory, setShowHistory] = useState(false) // 折り畳み（既定は非表示）
   const [showUnearnedBadges, setShowUnearnedBadges] = useState(false) // 未獲得バッジ一覧の折り畳み（既定は非表示）
   const [showAllBadges, setShowAllBadges] = useState(false) // 獲得済みバッジ一覧の折り畳み（既定は非表示）
+  const [pointValue, setPointValue] = useState(0) // 参加状況タブ: ポイント仮表示用
   const [userSettings, setUserSettings] = useState({
     notifications_enabled: true,
   })
@@ -110,6 +111,32 @@ export default function MainApp() {
   })
   const [participationMonthlyStats, setParticipationMonthlyStats] = useState([]) // [{ month: 'YYYY-MM', days: number }]
   const [participationRolesByDate, setParticipationRolesByDate] = useState({}) // { "YYYY-MM-DD": { driver: boolean, attendant: boolean } }
+
+  // 参加状況タブ: ポイント値をlocalStorageから復元
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const stored = window.localStorage.getItem("gs_point_value")
+      if (stored != null && stored.trim() !== "") {
+        const num = Number(stored)
+        if (!Number.isNaN(num) && Number.isFinite(num) && num >= 0) {
+          setPointValue(Math.floor(num))
+        }
+      }
+    } catch {
+      // localStorageが使えない環境では何もしない
+    }
+  }, [])
+
+  // ポイント値の変更をlocalStorageに保存
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      window.localStorage.setItem("gs_point_value", String(pointValue ?? 0))
+    } catch {
+      // 保存に失敗してもアプリ動作には影響させない
+    }
+  }, [pointValue])
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -1233,6 +1260,22 @@ export default function MainApp() {
     }
   }, [participationStats])
 
+  // ポイント値を編集するハンドラ（仮実装）
+  const handleEditPoint = () => {
+    if (typeof window === "undefined") return
+    const current = Number.isFinite(pointValue) ? String(pointValue) : "0"
+    const input = window.prompt("ポイント数を入力してください", current)
+    if (input == null) return
+    const trimmed = input.trim()
+    if (!trimmed) return
+    const num = Number(trimmed)
+    if (Number.isNaN(num) || !Number.isFinite(num) || num < 0) {
+      window.alert("0以上の数字を入力してください。")
+      return
+    }
+    setPointValue(Math.floor(num))
+  }
+
   // 参加状況タブの内容を追加
   const renderParticipationTab = () => (
     <div>
@@ -1243,6 +1286,31 @@ export default function MainApp() {
           <div className="text-lg font-medium text-gray-700">日間</div>
           <div className="text-sm text-gray-500 mt-2">活動に参加した日数</div>
         </div>
+      </div>
+
+      {/* ポイントカード風（ダミー） */}
+      <div className="mb-6">
+        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center gap-4">
+          {/* 左側ロゴ風ダミー */}
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-bold text-2xl shadow-sm">
+            C
+          </div>
+          {/* 右側: ポイント表示カード */}
+          <button
+            type="button"
+            onClick={handleEditPoint}
+            className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3 flex items-center justify-between text-left hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          >
+            <span className="text-base sm:text-lg font-medium text-gray-700">ポイント</span>
+            <span className="flex items-baseline gap-1">
+              <span className="text-2xl sm:text-3xl font-bold text-gray-900">{pointValue}</span>
+              <span className="text-xs sm:text-sm text-gray-600">P</span>
+            </span>
+          </button>
+        </div>
+        <p className="mt-1 text-[11px] text-gray-500">
+          ※ ポイント数は、ご自身で入力する仮の表示です（このアプリの機能には影響しません）。
+        </p>
       </div>
 
       {/* ストリーク + 目標達成度 */}
