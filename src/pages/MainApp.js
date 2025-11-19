@@ -107,7 +107,7 @@ export default function MainApp() {
     bestMonthDays: 0,
   })
   const [participationMonthlyStats, setParticipationMonthlyStats] = useState([]) // [{ month: 'YYYY-MM', days: number }]
-  const [participationTagsByDate, setParticipationTagsByDate] = useState({}) // 参加履歴カレンダー用の特別タグ
+  const [participationRolesByDate, setParticipationRolesByDate] = useState({}) // { "YYYY-MM-DD": { driver: boolean, attendant: boolean } }
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -317,7 +317,6 @@ export default function MainApp() {
         bestMonthDays: 0,
       })
       setParticipationMonthlyStats([])
-      setParticipationTagsByDate({})
       return
     }
     try {
@@ -364,6 +363,22 @@ export default function MainApp() {
         setParticipationCount(count)
         setParticipationDates(uniqueDates)
 
+        // 日付ごとの参加役割情報を計算
+        const participationRolesByDate = {}
+        for (const item of data) {
+          if (!item.date || item.date.trim() === "" || item.date > today) continue
+          if (!participationRolesByDate[item.date]) {
+            participationRolesByDate[item.date] = { driver: false, attendant: false }
+          }
+          if (item.role === "driver" || item.kind === "driver") {
+            participationRolesByDate[item.date].driver = true
+          }
+          if (item.role === "attendant" || item.kind === "attendant") {
+            participationRolesByDate[item.date].attendant = true
+          }
+        }
+        setParticipationRolesByDate(participationRolesByDate)
+
         // 役割別参加回数（イベント単位のシンプルなカウント）
         const driverCount = data.filter((item) => item.role === "driver" || item.kind === "driver").length
         const attendantCount = data.filter((item) => item.role === "attendant" || item.kind === "attendant").length
@@ -393,63 +408,59 @@ export default function MainApp() {
         const lastMonthDays = monthlyMap.get(lastMonthKey)?.size || 0
         const bestMonthDays = monthlyArray.reduce((max, m) => (m.days > max ? m.days : max), 0)
 
-        // 連続参加ストリークを計算（ユニーク日付を昇順にソート）
-        const sortedDates = Array.from(uniqueDates).sort()
+        // 連続参加ストリークを計算
+        // 現在のストリーク: 今日から過去に向かって連続している日数
+        const sortedDatesDesc = Array.from(uniqueDates).sort().reverse() // 降順（新しい日付から古い日付へ）
         let currentStreak = 0
-        let longestStreak = 0
-        let prevDateObj = null
-        for (const d of sortedDates) {
+        const todayDateObj = parseYMD(today)
+        let prevDateObjForCurrent = null
+
+        for (const d of sortedDatesDesc) {
           const currentDateObj = parseYMD(d)
-          if (!prevDateObj) {
-            currentStreak = 1
+          if (!prevDateObjForCurrent) {
+            // 最初の日付が今日または昨日の場合のみカウント開始
+            const diffMs = todayDateObj.getTime() - currentDateObj.getTime()
+            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+            if (diffDays <= 1) {
+              currentStreak = 1
+              prevDateObjForCurrent = currentDateObj
+            }
           } else {
-            const diffMs = currentDateObj.getTime() - prevDateObj.getTime()
+            // 前の日付との差が1日なら連続
+            const diffMs = prevDateObjForCurrent.getTime() - currentDateObj.getTime()
             const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
             if (diffDays === 1) {
               currentStreak += 1
+              prevDateObjForCurrent = currentDateObj
             } else {
-              currentStreak = 1
+              break // 連続が途切れたら終了
             }
           }
-          if (currentStreak > longestStreak) {
-            longestStreak = currentStreak
-          }
-          prevDateObj = currentDateObj
         }
 
-        // 特別な参加日のタグを作成
-        const tagsByDate = {}
-        const addTag = (date, label) => {
-          if (!date) return
-          if (!tagsByDate[date]) tagsByDate[date] = []
-          tagsByDate[date].push({ label })
-        }
-
-        // 初参加日
-        if (sortedDates.length > 0) {
-          addTag(sortedDates[0], "初参加")
-        }
-        // 役割ごとの初参加
-        const firstDriver = data
-          .filter((item) => (item.role || item.kind) === "driver" && item.date && item.date <= today)
-          .sort((a, b) => a.date.localeCompare(b.date))[0]
-        if (firstDriver) {
-          addTag(firstDriver.date, "運転初参加")
-        }
-        const firstAttendant = data
-          .filter((item) => (item.role || item.kind) === "attendant" && item.date && item.date <= today)
-          .sort((a, b) => a.date.localeCompare(b.date))[0]
-        if (firstAttendant) {
-          addTag(firstAttendant.date, "添乗初参加")
-        }
-        // 節目となる活動日（10日目・20日目・30日目など）
-        const milestones = [10, 20, 30]
-        milestones.forEach((m) => {
-          if (sortedDates.length >= m) {
-            const milestoneDate = sortedDates[m - 1]
-            addTag(milestoneDate, `${m}日目`)
+        // 最長ストリーク: 全期間を通じての最長連続日数（昇順で計算）
+        const sortedDatesAsc = Array.from(uniqueDates).sort() // 昇順（古い日付から新しい日付へ）
+        let longestStreak = 0
+        let streakCount = 0
+        let prevDateObjForLongest = null
+        for (const d of sortedDatesAsc) {
+          const currentDateObj = parseYMD(d)
+          if (!prevDateObjForLongest) {
+            streakCount = 1
+          } else {
+            const diffMs = currentDateObj.getTime() - prevDateObjForLongest.getTime()
+            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+            if (diffDays === 1) {
+              streakCount += 1
+            } else {
+              streakCount = 1
+            }
           }
-        })
+          if (streakCount > longestStreak) {
+            longestStreak = streakCount
+          }
+          prevDateObjForLongest = currentDateObj
+        }
 
         setParticipationStats({
           totalDays: count,
@@ -461,12 +472,12 @@ export default function MainApp() {
           bestMonthDays,
         })
         setParticipationMonthlyStats(monthlyArray)
-        setParticipationTagsByDate(tagsByDate)
       } else {
         console.warn("Invalid data format:", res.data)
         setParticipationHistory([])
         setParticipationCount(0)
         setParticipationDates(new Set())
+        setParticipationRolesByDate({})
         setParticipationStats({
           totalDays: 0,
           totalByRole: { driver: 0, attendant: 0 },
@@ -477,13 +488,13 @@ export default function MainApp() {
           bestMonthDays: 0,
         })
         setParticipationMonthlyStats([])
-        setParticipationTagsByDate({})
       }
     } catch (e) {
       console.error("participation history fetch error:", e)
       setParticipationHistory([])
       setParticipationCount(0)
       setParticipationDates(new Set())
+      setParticipationRolesByDate({})
     }
   }, [userName, handleNetworkError])
 
@@ -1251,9 +1262,9 @@ export default function MainApp() {
           decidedDates={participationDates}
           cancelledDates={new Set()}
           decidedMembersByDate={calendarDecidedMembersByDate}
-          eventTagsByDate={participationTagsByDate}
           myAppliedEventIds={new Set()}
           compact={true}
+          participationRolesByDate={participationRolesByDate}
         />
       </div>
 
