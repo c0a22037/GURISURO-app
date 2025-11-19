@@ -1288,42 +1288,45 @@ export default function MainApp() {
         </div>
       </div>
 
-      {/* ポイントカード（画像ファイル使用） */}
+      {/* ポイントカード（千葉シティポイント風） */}
       <div className="mb-6">
-        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center gap-4">
-          {/* 左側ロゴ画像 */}
-          <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-emerald-500 flex items-center justify-center shadow-sm overflow-hidden">
-            <img
-              public="/icons/chiba-point-logo.png"
-              alt="ちばポ"
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                // 画像が読み込めない場合のフォールバック（ダミーのCを表示）
-                e.currentTarget.style.display = "none"
-                const fallback = e.currentTarget.parentElement
-                if (fallback && !fallback.querySelector("span")) {
-                  const span = document.createElement("span")
-                  span.className = "text-white font-bold text-2xl"
-                  span.textContent = "C"
-                  fallback.appendChild(span)
-                }
-              }}
-            />
+        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center gap-3 sm:gap-4">
+          {/* 左側ロゴ（C文字とちばポテキスト） */}
+          <div className="flex-shrink-0 relative">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 relative">
+              {/* C文字（折りたたまれたリボン風） */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative">
+                  <span className="text-5xl sm:text-6xl font-extrabold text-emerald-700 leading-none" style={{ fontFamily: 'serif' }}>
+                    C
+                  </span>
+                  {/* 折りたたまれたリボンのような影効果 */}
+                  <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+                    <div className="absolute top-1 left-1 w-full h-full bg-emerald-800 rounded-sm opacity-30" style={{ transform: 'rotate(-2deg)' }}></div>
+                    <div className="absolute top-0.5 left-0.5 w-full h-full bg-emerald-900 rounded-sm opacity-20" style={{ transform: 'rotate(1deg)' }}></div>
+                  </div>
+                </div>
+              </div>
+              {/* ちばポテキスト（Cの中央に配置） */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs sm:text-sm font-bold text-emerald-800 mt-2 sm:mt-3">ちばポ</span>
+              </div>
+            </div>
           </div>
           {/* 右側: ポイント表示カード */}
           <button
             type="button"
             onClick={handleEditPoint}
-            className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3 flex items-center justify-between text-left hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 flex items-center justify-between text-left hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors"
           >
             <span className="text-base sm:text-lg font-medium text-gray-700">ポイント</span>
             <span className="flex items-baseline gap-1">
               <span className="text-2xl sm:text-3xl font-bold text-gray-900">{pointValue}</span>
-              <span className="text-xs sm:text-sm text-gray-600">P</span>
+              <span className="text-base sm:text-lg text-gray-600 font-medium">P</span>
             </span>
           </button>
         </div>
-        <p className="mt-1 text-[11px] text-gray-500">
+        <p className="mt-1 text-[11px] text-gray-500 text-center">
           ※ ポイント数は、ご自身で入力する仮の表示です（このアプリの機能には影響しません）。
         </p>
       </div>
