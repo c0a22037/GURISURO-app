@@ -107,6 +107,7 @@ export default function MainApp() {
     bestMonthDays: 0,
   })
   const [participationMonthlyStats, setParticipationMonthlyStats] = useState([]) // [{ month: 'YYYY-MM', days: number }]
+  const [participationTagsByDate, setParticipationTagsByDate] = useState({}) // 参加履歴カレンダー用の特別タグ
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -316,6 +317,7 @@ export default function MainApp() {
         bestMonthDays: 0,
       })
       setParticipationMonthlyStats([])
+      setParticipationTagsByDate({})
       return
     }
     try {
@@ -415,6 +417,40 @@ export default function MainApp() {
           prevDateObj = currentDateObj
         }
 
+        // 特別な参加日のタグを作成
+        const tagsByDate = {}
+        const addTag = (date, label) => {
+          if (!date) return
+          if (!tagsByDate[date]) tagsByDate[date] = []
+          tagsByDate[date].push({ label })
+        }
+
+        // 初参加日
+        if (sortedDates.length > 0) {
+          addTag(sortedDates[0], "初参加")
+        }
+        // 役割ごとの初参加
+        const firstDriver = data
+          .filter((item) => (item.role || item.kind) === "driver" && item.date && item.date <= today)
+          .sort((a, b) => a.date.localeCompare(b.date))[0]
+        if (firstDriver) {
+          addTag(firstDriver.date, "運転初参加")
+        }
+        const firstAttendant = data
+          .filter((item) => (item.role || item.kind) === "attendant" && item.date && item.date <= today)
+          .sort((a, b) => a.date.localeCompare(b.date))[0]
+        if (firstAttendant) {
+          addTag(firstAttendant.date, "添乗初参加")
+        }
+        // 節目となる活動日（10日目・20日目・30日目など）
+        const milestones = [10, 20, 30]
+        milestones.forEach((m) => {
+          if (sortedDates.length >= m) {
+            const milestoneDate = sortedDates[m - 1]
+            addTag(milestoneDate, `${m}日目`)
+          }
+        })
+
         setParticipationStats({
           totalDays: count,
           totalByRole: { driver: driverCount, attendant: attendantCount },
@@ -425,6 +461,7 @@ export default function MainApp() {
           bestMonthDays,
         })
         setParticipationMonthlyStats(monthlyArray)
+        setParticipationTagsByDate(tagsByDate)
       } else {
         console.warn("Invalid data format:", res.data)
         setParticipationHistory([])
@@ -440,6 +477,7 @@ export default function MainApp() {
           bestMonthDays: 0,
         })
         setParticipationMonthlyStats([])
+        setParticipationTagsByDate({})
       }
     } catch (e) {
       console.error("participation history fetch error:", e)
@@ -1213,6 +1251,7 @@ export default function MainApp() {
           decidedDates={participationDates}
           cancelledDates={new Set()}
           decidedMembersByDate={calendarDecidedMembersByDate}
+          eventTagsByDate={participationTagsByDate}
           myAppliedEventIds={new Set()}
           compact={true}
         />
