@@ -462,6 +462,7 @@ export default function MainApp() {
         }
 
         // 最長ストリーク: 全期間を通じての最長連続日数（昇順で計算）
+        // 活動日と活動日の間に活動日がない場合は連続と判断
         const sortedDatesAsc = Array.from(uniqueDates).sort() // 昇順（古い日付から新しい日付へ）
         let longestStreak = 0
         let streakCount = 0
@@ -473,9 +474,32 @@ export default function MainApp() {
           } else {
             const diffMs = currentDateObj.getTime() - prevDateObjForLongest.getTime()
             const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+            
             if (diffDays === 1) {
+              // 1日違いの場合は連続
               streakCount += 1
+            } else if (diffDays > 1) {
+              // 2日以上離れている場合、その間に活動日があるかチェック
+              let hasEventBetween = false
+              for (let i = 1; i < diffDays; i++) {
+                const checkDate = new Date(prevDateObjForLongest)
+                checkDate.setDate(checkDate.getDate() + i)
+                const checkDateStr = toLocalYMD(checkDate)
+                if (eventDatesSet.has(checkDateStr)) {
+                  hasEventBetween = true
+                  break
+                }
+              }
+              
+              if (!hasEventBetween) {
+                // 間に活動日がない場合は連続と判断
+                streakCount += 1
+              } else {
+                // 間に活動日がある場合は連続が途切れた
+                streakCount = 1
+              }
             } else {
+              // diffDays <= 0 の場合は異常（未来の日付など）
               streakCount = 1
             }
           }
