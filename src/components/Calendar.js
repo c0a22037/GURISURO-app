@@ -442,9 +442,6 @@ export default function Calendar({
     const isCancelled = cancelledDates.has(key);
     const decidedMembers = decidedMembersByDate?.[key] || null; // 管理者用: 確定済みメンバー情報（日付単位のまとめ）
     const decidedMembersByEventId = decidedMembersByDate?._byEventId || {}; // 管理者用: イベントIDごとの確定済みメンバー情報
-    const participationRoles = participationRolesByDate?.[key]; // 参加履歴カレンダー用: その日付での参加役割
-    const isDriver = participationRoles?.driver;
-    const isAttendant = participationRoles?.attendant;
 
     // 1週間前以内かどうかを判定（イベントがある場合のみ）
     const eventDate = new Date(date);
@@ -593,49 +590,16 @@ export default function Calendar({
         }}
       >
         {/* 上段：日付 */}
-        <div className="flex items-start justify-between mb-1 relative">
-          <div className="flex items-center gap-1 flex-1 min-w-0">
-            <span className={`text-[17px] sm:text-[18px] font-extrabold ${dayColor}`}>
-              {i}
-            </span>
-            {/* 参加役割アイコン（参加履歴カレンダー用）- 日付の右側に小さく配置 */}
-            {isDecided && (isDriver || isAttendant) && (
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                {isDriver && (
-                  <span 
-                    className="text-[9px] sm:text-[10px] leading-none" 
-                    title="運転手で参加" 
-                    aria-label="運転手で参加"
-                    style={{ 
-                      display: 'inline-block',
-                      lineHeight: '1'
-                    }}
-                  >
-                    🚗
-                  </span>
-                )}
-                {isAttendant && (
-                  <span 
-                    className="text-[9px] sm:text-[10px] leading-none" 
-                    title="添乗員で参加" 
-                    aria-label="添乗員で参加"
-                    style={{ 
-                      display: 'inline-block',
-                      lineHeight: '1'
-                    }}
-                  >
-                    🗣️
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-          {/* 右上に小さなイベントマーク（コンパクト時のみ、アイコンがない場合のみ表示） */}
-          {isCompact && (dayEvents.length > 0 || hasTags) && !(isDecided && (isDriver || isAttendant)) && (
+        <div className="flex items-start justify-between mb-1">
+          <span className={`text-[17px] sm:text-[18px] font-extrabold ${dayColor}`}>
+            {i}
+          </span>
+          {/* 右上に小さなイベントマーク（コンパクト時のみ） */}
+          {isCompact && (dayEvents.length > 0 || hasTags) && (
             <span
               aria-label="イベントあり"
               title="イベントあり"
-              className="inline-block rounded-full bg-amber-500 flex-shrink-0"
+              className="inline-block rounded-full bg-amber-500"
               style={{ width: '6px', height: '6px', marginTop: '2px' }}
             />
           )}

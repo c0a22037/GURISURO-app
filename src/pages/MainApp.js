@@ -1264,7 +1264,6 @@ export default function MainApp() {
           decidedMembersByDate={calendarDecidedMembersByDate}
           myAppliedEventIds={new Set()}
           compact={true}
-          participationRolesByDate={participationRolesByDate}
         />
       </div>
 
