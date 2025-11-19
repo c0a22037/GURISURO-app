@@ -1239,7 +1239,7 @@ export default function MainApp() {
       <div className="mb-6">
         <h2 className="font-semibold mb-2">累計活動日数</h2>
         <div className="border-2 border-emerald-500 rounded-lg p-6 bg-gradient-to-br from-emerald-50 to-green-50 text-center">
-          <div className="text-6xl font-extrabold text-emerald-600 mb-2">{participationCount}</div>
+          <div className="text-5xl font-extrabold text-emerald-600 mb-2">{participationCount}</div>
           <div className="text-lg font-medium text-gray-700">日間</div>
           <div className="text-sm text-gray-500 mt-2">活動に参加した日数</div>
         </div>
@@ -1301,11 +1301,7 @@ export default function MainApp() {
       {/* 最近獲得したバッジ */}
       <div className="mb-6">
         <h2 className="font-semibold mb-2">最近獲得したバッジ</h2>
-        {recentBadges.length === 0 ? (
-          <p className="text-sm text-gray-500 border rounded p-3">
-            最近獲得したバッジはありません。
-          </p>
-        ) : (
+        {recentBadges.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {recentBadges.map((badge) => (
               <div
@@ -1320,7 +1316,7 @@ export default function MainApp() {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* 獲得済みバッジ一覧（折り畳み式） */}
