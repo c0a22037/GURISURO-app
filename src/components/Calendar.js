@@ -594,30 +594,48 @@ export default function Calendar({
       >
         {/* 上段：日付 */}
         <div className="flex items-start justify-between mb-1 relative">
-          <span className={`text-[17px] sm:text-[18px] font-extrabold ${dayColor}`}>
-            {i}
-          </span>
-          {/* 参加役割アイコン（参加履歴カレンダー用）- 右上に配置 */}
-          {isDecided && (isDriver || isAttendant) && (
-            <div className="absolute top-0 right-0 flex items-center gap-0.5" style={{ lineHeight: '1' }}>
-              {isDriver && (
-                <span className="text-[10px] sm:text-xs" title="運転手で参加" aria-label="運転手で参加" style={{ display: 'inline-block' }}>
-                  🚗
-                </span>
-              )}
-              {isAttendant && (
-                <span className="text-[10px] sm:text-xs" title="添乗員で参加" aria-label="添乗員で参加" style={{ display: 'inline-block' }}>
-                  🗣️
-                </span>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-1 flex-1 min-w-0">
+            <span className={`text-[17px] sm:text-[18px] font-extrabold ${dayColor}`}>
+              {i}
+            </span>
+            {/* 参加役割アイコン（参加履歴カレンダー用）- 日付の右側に小さく配置 */}
+            {isDecided && (isDriver || isAttendant) && (
+              <div className="flex items-center gap-0.5 flex-shrink-0">
+                {isDriver && (
+                  <span 
+                    className="text-[9px] sm:text-[10px] leading-none" 
+                    title="運転手で参加" 
+                    aria-label="運転手で参加"
+                    style={{ 
+                      display: 'inline-block',
+                      lineHeight: '1'
+                    }}
+                  >
+                    🚗
+                  </span>
+                )}
+                {isAttendant && (
+                  <span 
+                    className="text-[9px] sm:text-[10px] leading-none" 
+                    title="添乗員で参加" 
+                    aria-label="添乗員で参加"
+                    style={{ 
+                      display: 'inline-block',
+                      lineHeight: '1'
+                    }}
+                  >
+                    🗣️
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
           {/* 右上に小さなイベントマーク（コンパクト時のみ、アイコンがない場合のみ表示） */}
           {isCompact && (dayEvents.length > 0 || hasTags) && !(isDecided && (isDriver || isAttendant)) && (
             <span
               aria-label="イベントあり"
               title="イベントあり"
-              className="inline-block rounded-full bg-amber-500"
+              className="inline-block rounded-full bg-amber-500 flex-shrink-0"
               style={{ width: '6px', height: '6px', marginTop: '2px' }}
             />
           )}
