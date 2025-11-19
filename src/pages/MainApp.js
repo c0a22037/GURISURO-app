@@ -409,31 +409,54 @@ export default function MainApp() {
         const bestMonthDays = monthlyArray.reduce((max, m) => (m.days > max ? m.days : max), 0)
 
         // 連続参加ストリークを計算
-        // 現在のストリーク: 今日から過去に向かって連続している日数
+        // 現在のストリーク: 最新の参加日から過去に向かって連続している日数（活動日のみでカウント）
+        // 活動日と活動日の間に活動日がない場合は連続と判断
         const sortedDatesDesc = Array.from(uniqueDates).sort().reverse() // 降順（新しい日付から古い日付へ）
         let currentStreak = 0
-        const todayDateObj = parseYMD(today)
         let prevDateObjForCurrent = null
+
+        // 活動日（イベント）の日付をSetに変換（高速検索用）
+        const eventDatesSet = new Set(events.map(ev => ev.date).filter(Boolean))
 
         for (const d of sortedDatesDesc) {
           const currentDateObj = parseYMD(d)
           if (!prevDateObjForCurrent) {
-            // 最初の日付が今日または昨日の場合のみカウント開始
-            const diffMs = todayDateObj.getTime() - currentDateObj.getTime()
-            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
-            if (diffDays <= 1) {
-              currentStreak = 1
-              prevDateObjForCurrent = currentDateObj
-            }
+            // 最初の日付（最新の参加日）からカウント開始
+            currentStreak = 1
+            prevDateObjForCurrent = currentDateObj
           } else {
-            // 前の日付との差が1日なら連続
+            // 前の日付との差を計算
             const diffMs = prevDateObjForCurrent.getTime() - currentDateObj.getTime()
             const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+            
             if (diffDays === 1) {
+              // 1日違いの場合は連続
               currentStreak += 1
               prevDateObjForCurrent = currentDateObj
+            } else if (diffDays > 1) {
+              // 2日以上離れている場合、その間に活動日があるかチェック
+              let hasEventBetween = false
+              for (let i = 1; i < diffDays; i++) {
+                const checkDate = new Date(prevDateObjForCurrent)
+                checkDate.setDate(checkDate.getDate() - i)
+                const checkDateStr = toLocalYMD(checkDate)
+                if (eventDatesSet.has(checkDateStr)) {
+                  hasEventBetween = true
+                  break
+                }
+              }
+              
+              if (!hasEventBetween) {
+                // 間に活動日がない場合は連続と判断
+                currentStreak += 1
+                prevDateObjForCurrent = currentDateObj
+              } else {
+                // 間に活動日がある場合は連続が途切れた
+                break
+              }
             } else {
-              break // 連続が途切れたら終了
+              // diffDays <= 0 の場合は異常（未来の日付など）
+              break
             }
           }
         }
@@ -496,7 +519,7 @@ export default function MainApp() {
       setParticipationDates(new Set())
       setParticipationRolesByDate({})
     }
-  }, [userName, handleNetworkError])
+  }, [userName, handleNetworkError, events])
 
   useEffect(() => {
     if (activeTab === "mypage") {
