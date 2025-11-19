@@ -91,6 +91,7 @@ export default function MainApp() {
   const [applicationHistory, setApplicationHistory] = useState([]) // 応募履歴（イベント情報込み）
   const [showHistory, setShowHistory] = useState(false) // 折り畳み（既定は非表示）
   const [showUnearnedBadges, setShowUnearnedBadges] = useState(false) // 未獲得バッジ一覧の折り畳み（既定は非表示）
+  const [showAllBadges, setShowAllBadges] = useState(false) // 獲得済みバッジ一覧の折り畳み（既定は非表示）
   const [userSettings, setUserSettings] = useState({
     notifications_enabled: true,
   })
@@ -1128,6 +1129,58 @@ export default function MainApp() {
     })
   }, [participationStats, allBadges])
 
+  // 最近獲得したバッジを判定（最新の参加日で新しく獲得されたバッジ）
+  const recentBadges = useMemo(() => {
+    if (participationHistory.length === 0) return []
+    
+    // 最新の参加日を取得
+    const sortedHistory = [...participationHistory].sort((a, b) => {
+      const dateA = a.date || ""
+      const dateB = b.date || ""
+      return dateB.localeCompare(dateA)
+    })
+    const latestParticipation = sortedHistory[0]
+    if (!latestParticipation) return []
+
+    // 最新の参加日以前の参加履歴から、1つ前の状態を計算
+    const beforeLatestHistory = participationHistory.filter(
+      (item) => item.date && item.date < (latestParticipation.date || "")
+    )
+    
+    // 1つ前の状態での統計を計算
+    const beforeDates = new Set(
+      beforeLatestHistory
+        .map((item) => item.date)
+        .filter((date) => date && date.trim() !== "")
+    )
+    const beforeTotal = beforeDates.size
+    const beforeDriver = beforeLatestHistory.filter(
+      (item) => item.role === "driver" || item.kind === "driver"
+    ).length
+    const beforeAttendant = beforeLatestHistory.filter(
+      (item) => item.role === "attendant" || item.kind === "attendant"
+    ).length
+
+    // 現在の状態でのバッジ
+    const currentBadges = badges
+
+    // 1つ前の状態でのバッジ
+    const beforeBadges = allBadges.filter((badge) => {
+      if (badge.minTotalDays != null && beforeTotal < badge.minTotalDays) return false
+      if (badge.role === "driver" && (badge.minRoleCount || 0) > beforeDriver) return false
+      if (badge.role === "attendant" && (badge.minRoleCount || 0) > beforeAttendant) return false
+      return true
+    })
+
+    // 新しく獲得されたバッジ（現在は獲得済みだが、1つ前は未獲得）
+    const newlyEarned = currentBadges.filter(
+      (badge) => !beforeBadges.some((b) => b.id === badge.id)
+    )
+
+    // 最新の2個を返す
+    return newlyEarned.slice(0, 2)
+  }, [participationHistory, badges, allBadges, participationStats])
+
   // 未獲得バッジ一覧
   const unearnedBadges = useMemo(
     () => allBadges.filter((badge) => !badges.some((b) => b.id === badge.id)),
@@ -1245,16 +1298,16 @@ export default function MainApp() {
         </div>
       </div>
 
-      {/* 実績バッジ */}
+      {/* 最近獲得したバッジ */}
       <div className="mb-6">
-        <h2 className="font-semibold mb-2">あなたのバッジ</h2>
-        {badges.length === 0 ? (
+        <h2 className="font-semibold mb-2">最近獲得したバッジ</h2>
+        {recentBadges.length === 0 ? (
           <p className="text-sm text-gray-500 border rounded p-3">
-            まだバッジはありません。活動に参加すると、ここにバッジが増えていきます。
+            最近獲得したバッジはありません。
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {badges.map((badge) => (
+            {recentBadges.map((badge) => (
               <div
                 key={badge.id}
                 className="border border-amber-200 rounded-lg p-3 bg-amber-50 flex items-start gap-2"
@@ -1269,6 +1322,37 @@ export default function MainApp() {
           </div>
         )}
       </div>
+
+      {/* 獲得済みバッジ一覧（折り畳み式） */}
+      {badges.length > 0 && (
+        <div className="mb-6">
+          <button
+            onClick={() => setShowAllBadges((v) => !v)}
+            className="w-full flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <h2 className="font-semibold text-gray-800">獲得済みのバッジ</h2>
+            <span className="text-sm text-gray-600">
+              {showAllBadges ? "閉じる" : "タップして表示"}
+            </span>
+          </button>
+          {showAllBadges && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className="border border-amber-200 rounded-lg p-3 bg-amber-50 flex items-start gap-2"
+                >
+                  <div className="text-xl">🏅</div>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-amber-800">{badge.label}</div>
+                    <div className="text-xs text-amber-700 mt-1">{badge.description}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 未獲得バッジ（折り畳み式） */}
       {unearnedBadges.length > 0 && (
