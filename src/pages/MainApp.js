@@ -1239,7 +1239,7 @@ export default function MainApp() {
       <div className="mb-6">
         <h2 className="font-semibold mb-2">累計活動日数</h2>
         <div className="border-2 border-emerald-500 rounded-lg p-6 bg-gradient-to-br from-emerald-50 to-green-50 text-center">
-          <div className="text-5xl font-extrabold text-emerald-600 mb-2">{participationCount}</div>
+          <div className="text-4xl font-extrabold text-emerald-600 mb-2">{participationCount}</div>
           <div className="text-lg font-medium text-gray-700">日間</div>
           <div className="text-sm text-gray-500 mt-2">活動に参加した日数</div>
         </div>
