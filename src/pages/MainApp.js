@@ -90,6 +90,7 @@ export default function MainApp() {
   const MAX_NOTIFS = 30 // 表示・保持の上限（古いものは自動的に非表示）
   const [applicationHistory, setApplicationHistory] = useState([]) // 応募履歴（イベント情報込み）
   const [showHistory, setShowHistory] = useState(false) // 折り畳み（既定は非表示）
+  const [showUnearnedBadges, setShowUnearnedBadges] = useState(false) // 未獲得バッジ一覧の折り畳み（既定は非表示）
   const [userSettings, setUserSettings] = useState({
     notifications_enabled: true,
   })
@@ -1269,30 +1270,36 @@ export default function MainApp() {
         )}
       </div>
 
-      {/* 未獲得バッジ */}
-      <div className="mb-6">
-        <h2 className="font-semibold mb-2">未獲得のバッジ</h2>
-        {unearnedBadges.length === 0 ? (
-          <p className="text-sm text-gray-500 border rounded p-3">
-            すべてのバッジを獲得しています。継続的なご活動、ありがとうございます。
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {unearnedBadges.map((badge) => (
-              <div
-                key={badge.id}
-                className="border border-dashed border-gray-300 rounded-lg p-3 bg-gray-50 flex items-start gap-2"
-              >
-                <div className="text-xl">🎯</div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-gray-800">{badge.label}</div>
-                  <div className="text-xs text-gray-600 mt-1">{badge.description}</div>
+      {/* 未獲得バッジ（折り畳み式） */}
+      {unearnedBadges.length > 0 && (
+        <div className="mb-6">
+          <button
+            onClick={() => setShowUnearnedBadges((v) => !v)}
+            className="w-full flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <h2 className="font-semibold text-gray-800">未獲得のバッジ</h2>
+            <span className="text-sm text-gray-600">
+              {showUnearnedBadges ? "閉じる" : "タップして表示"}
+            </span>
+          </button>
+          {showUnearnedBadges && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {unearnedBadges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className="border border-dashed border-gray-300 rounded-lg p-3 bg-gray-50 flex items-start gap-2"
+                >
+                  <div className="text-xl">🎯</div>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-gray-800">{badge.label}</div>
+                    <div className="text-xs text-gray-600 mt-1">{badge.description}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mb-6">
         <h2 className="font-semibold mb-4">参加履歴カレンダー</h2>
