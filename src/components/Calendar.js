@@ -593,29 +593,27 @@ export default function Calendar({
         }}
       >
         {/* 上段：日付 */}
-        <div className="flex items-start justify-between mb-1">
-          <div className="flex items-center gap-1">
-            <span className={`text-[17px] sm:text-[18px] font-extrabold ${dayColor}`}>
-              {i}
-            </span>
-            {/* 参加役割アイコン（参加履歴カレンダー用） */}
-            {isDecided && (isDriver || isAttendant) && (
-              <div className="flex items-center gap-0.5">
-                {isDriver && (
-                  <span className="text-xs sm:text-sm" title="運転手で参加" aria-label="運転手で参加">
-                    🚗
-                  </span>
-                )}
-                {isAttendant && (
-                  <span className="text-xs sm:text-sm" title="添乗員で参加" aria-label="添乗員で参加">
-                    🗣️
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-          {/* 右上に小さなイベントマーク（コンパクト時のみ） */}
-          {isCompact && (dayEvents.length > 0 || hasTags) && (
+        <div className="flex items-start justify-between mb-1 relative">
+          <span className={`text-[17px] sm:text-[18px] font-extrabold ${dayColor}`}>
+            {i}
+          </span>
+          {/* 参加役割アイコン（参加履歴カレンダー用）- 右上に配置 */}
+          {isDecided && (isDriver || isAttendant) && (
+            <div className="absolute top-0 right-0 flex items-center gap-0.5" style={{ lineHeight: '1' }}>
+              {isDriver && (
+                <span className="text-[10px] sm:text-xs" title="運転手で参加" aria-label="運転手で参加" style={{ display: 'inline-block' }}>
+                  🚗
+                </span>
+              )}
+              {isAttendant && (
+                <span className="text-[10px] sm:text-xs" title="添乗員で参加" aria-label="添乗員で参加" style={{ display: 'inline-block' }}>
+                  🗣️
+                </span>
+              )}
+            </div>
+          )}
+          {/* 右上に小さなイベントマーク（コンパクト時のみ、アイコンがない場合のみ表示） */}
+          {isCompact && (dayEvents.length > 0 || hasTags) && !(isDecided && (isDriver || isAttendant)) && (
             <span
               aria-label="イベントあり"
               title="イベントあり"
