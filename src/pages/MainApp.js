@@ -1288,12 +1288,27 @@ export default function MainApp() {
         </div>
       </div>
 
-      {/* ポイントカード風（ダミー） */}
+      {/* ポイントカード（画像ファイル使用） */}
       <div className="mb-6">
         <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center gap-4">
-          {/* 左側ロゴ風ダミー */}
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-bold text-2xl shadow-sm">
-            C
+          {/* 左側ロゴ画像 */}
+          <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-emerald-500 flex items-center justify-center shadow-sm overflow-hidden">
+            <img
+              public="/icons/chiba-point-logo.png"
+              alt="ちばポ"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                // 画像が読み込めない場合のフォールバック（ダミーのCを表示）
+                e.currentTarget.style.display = "none"
+                const fallback = e.currentTarget.parentElement
+                if (fallback && !fallback.querySelector("span")) {
+                  const span = document.createElement("span")
+                  span.className = "text-white font-bold text-2xl"
+                  span.textContent = "C"
+                  fallback.appendChild(span)
+                }
+              }}
+            />
           </div>
           {/* 右側: ポイント表示カード */}
           <button
