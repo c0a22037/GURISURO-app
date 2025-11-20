@@ -1135,7 +1135,7 @@ export default function MainApp() {
     })
   }, [participationStats, allBadges])
 
-  // 最近獲得したバッジを判定（最新の参加日で新しく獲得されたバッジ、今日以前の日付のみ）
+  // 最近獲得したバッジを判定（最後に獲得したバッジを時系列で追跡、今日以前の日付のみ）
   const recentBadges = useMemo(() => {
     if (participationHistory.length === 0) return []
     
@@ -1149,52 +1149,79 @@ export default function MainApp() {
     
     if (pastHistory.length === 0) return []
     
-    // 最新の参加日を取得（今日以前の日付のみ）
-    const sortedHistory = [...pastHistory].sort((a, b) => {
-      const dateA = a.date || ""
-      const dateB = b.date || ""
-      return dateB.localeCompare(dateA)
-    })
-    const latestParticipation = sortedHistory[0]
-    if (!latestParticipation) return []
-
-    // 最新の参加日以前の参加履歴から、1つ前の状態を計算
-    const beforeLatestHistory = pastHistory.filter(
-      (item) => item.date && item.date < (latestParticipation.date || "")
-    )
+    // 日付ごとにグループ化（同じ日付の参加履歴をまとめる）
+    const historyByDate = new Map()
+    for (const item of pastHistory) {
+      const date = item.date
+      if (!historyByDate.has(date)) {
+        historyByDate.set(date, [])
+      }
+      historyByDate.get(date).push(item)
+    }
     
-    // 1つ前の状態での統計を計算
-    const beforeDates = new Set(
-      beforeLatestHistory
-        .map((item) => item.date)
-        .filter((date) => date && date.trim() !== "")
-    )
-    const beforeTotal = beforeDates.size
-    const beforeDriver = beforeLatestHistory.filter(
-      (item) => item.role === "driver" || item.kind === "driver"
-    ).length
-    const beforeAttendant = beforeLatestHistory.filter(
-      (item) => item.role === "attendant" || item.kind === "attendant"
-    ).length
-
-    // 現在の状態でのバッジ
-    const currentBadges = badges
-
-    // 1つ前の状態でのバッジ
-    const beforeBadges = allBadges.filter((badge) => {
-      if (badge.minTotalDays != null && beforeTotal < badge.minTotalDays) return false
-      if (badge.role === "driver" && (badge.minRoleCount || 0) > beforeDriver) return false
-      if (badge.role === "attendant" && (badge.minRoleCount || 0) > beforeAttendant) return false
-      return true
-    })
-
-    // 新しく獲得されたバッジ（現在は獲得済みだが、1つ前は未獲得）
-    const newlyEarned = currentBadges.filter(
-      (badge) => !beforeBadges.some((b) => b.id === badge.id)
-    )
-
+    // 日付を昇順にソート（古い順）
+    const sortedDates = Array.from(historyByDate.keys()).sort()
+    
+    // 各日付で獲得されたバッジを追跡
+    const earnedBadgesByDate = []
+    let previousDates = new Set()
+    let previousDriver = 0
+    let previousAttendant = 0
+    
+    for (const date of sortedDates) {
+      const dateHistory = historyByDate.get(date)
+      
+      // この日付までの統計を計算
+      const currentDates = new Set([...Array.from(previousDates), date])
+      const currentDriver = pastHistory.filter(
+        (item) => item.date && item.date <= date && (item.role === "driver" || item.kind === "driver")
+      ).length
+      const currentAttendant = pastHistory.filter(
+        (item) => item.date && item.date <= date && (item.role === "attendant" || item.kind === "attendant")
+      ).length
+      
+      // 前の状態でのバッジ
+      const beforeBadges = allBadges.filter((badge) => {
+        if (badge.minTotalDays != null && previousDates.size < badge.minTotalDays) return false
+        if (badge.role === "driver" && (badge.minRoleCount || 0) > previousDriver) return false
+        if (badge.role === "attendant" && (badge.minRoleCount || 0) > previousAttendant) return false
+        return true
+      })
+      
+      // この日付を含めた状態でのバッジ
+      const afterBadges = allBadges.filter((badge) => {
+        if (badge.minTotalDays != null && currentDates.size < badge.minTotalDays) return false
+        if (badge.role === "driver" && (badge.minRoleCount || 0) > currentDriver) return false
+        if (badge.role === "attendant" && (badge.minRoleCount || 0) > currentAttendant) return false
+        return true
+      })
+      
+      // この日付で新しく獲得されたバッジ
+      const newlyEarned = afterBadges.filter(
+        (badge) => !beforeBadges.some((b) => b.id === badge.id)
+      )
+      
+      if (newlyEarned.length > 0) {
+        earnedBadgesByDate.push({
+          date,
+          badges: newlyEarned,
+        })
+      }
+      
+      // 次のループのために更新
+      previousDates = currentDates
+      previousDriver = currentDriver
+      previousAttendant = currentAttendant
+    }
+    
+    // 最後に獲得されたバッジを取得（最新の日付から）
+    if (earnedBadgesByDate.length === 0) return []
+    
+    // 最新の日付で獲得されたバッジを取得
+    const latestEarned = earnedBadgesByDate[earnedBadgesByDate.length - 1]
+    
     // 最新の2個を返す
-    return newlyEarned.slice(0, 2)
+    return latestEarned.badges.slice(0, 2)
   }, [participationHistory, badges, allBadges, participationStats])
 
   // 未獲得バッジ一覧
