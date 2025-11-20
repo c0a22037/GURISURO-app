@@ -1245,18 +1245,8 @@ export default function MainApp() {
         </div>
       </div>
 
-      {/* ストリーク + 目標達成度 */}
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="border rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">連続活動日数</h3>
-          <p className="text-sm text-gray-600">
-            現在: <span className="font-semibold text-emerald-700">{participationStats.currentStreak}</span> 日
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            最長: <span className="font-semibold text-gray-700">{participationStats.longestStreak}</span> 日
-          </p>
-        </div>
-
+      {/* 今月の目標 */}
+      <div className="mb-6">
         <div className="border rounded-lg p-4 bg-white">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">今月の目標</h3>
           {(() => {
