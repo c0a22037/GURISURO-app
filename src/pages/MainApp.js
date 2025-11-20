@@ -381,9 +381,15 @@ export default function MainApp() {
         }
         setParticipationRolesByDate(participationRolesByDate)
 
-        // 役割別参加回数（イベント単位のシンプルなカウント）
-        const driverCount = data.filter((item) => item.role === "driver" || item.kind === "driver").length
-        const attendantCount = data.filter((item) => item.role === "attendant" || item.kind === "attendant").length
+        // 役割別参加回数（イベント単位のシンプルなカウント、今日以前の日付のみ）
+        const driverCount = data.filter((item) => {
+          if (!item.date || item.date.trim() === "" || item.date > today) return false
+          return item.role === "driver" || item.kind === "driver"
+        }).length
+        const attendantCount = data.filter((item) => {
+          if (!item.date || item.date.trim() === "" || item.date > today) return false
+          return item.role === "attendant" || item.kind === "attendant"
+        }).length
 
         // 月ごとの参加日数（ユニーク日付ベース）
         const monthlyMap = new Map() // monthKey -> Set of dates
@@ -1129,12 +1135,22 @@ export default function MainApp() {
     })
   }, [participationStats, allBadges])
 
-  // 最近獲得したバッジを判定（最新の参加日で新しく獲得されたバッジ）
+  // 最近獲得したバッジを判定（最新の参加日で新しく獲得されたバッジ、今日以前の日付のみ）
   const recentBadges = useMemo(() => {
     if (participationHistory.length === 0) return []
     
-    // 最新の参加日を取得
-    const sortedHistory = [...participationHistory].sort((a, b) => {
+    // 今日の日付を取得（YYYY-MM-DD形式）
+    const today = toLocalYMD(new Date())
+    
+    // 今日以前の日付のみをフィルタリング
+    const pastHistory = participationHistory.filter(
+      (item) => item.date && item.date.trim() !== "" && item.date <= today
+    )
+    
+    if (pastHistory.length === 0) return []
+    
+    // 最新の参加日を取得（今日以前の日付のみ）
+    const sortedHistory = [...pastHistory].sort((a, b) => {
       const dateA = a.date || ""
       const dateB = b.date || ""
       return dateB.localeCompare(dateA)
@@ -1143,7 +1159,7 @@ export default function MainApp() {
     if (!latestParticipation) return []
 
     // 最新の参加日以前の参加履歴から、1つ前の状態を計算
-    const beforeLatestHistory = participationHistory.filter(
+    const beforeLatestHistory = pastHistory.filter(
       (item) => item.date && item.date < (latestParticipation.date || "")
     )
     
@@ -1393,42 +1409,53 @@ export default function MainApp() {
 
       <div>
         <h2 className="font-semibold mb-4">参加履歴詳細</h2>
-        {participationHistory.length === 0 ? (
-          <p className="text-sm text-gray-500 border rounded p-3">参加履歴はありません。</p>
-        ) : (
-          <div className="space-y-2">
-            {participationHistory.map((item) => {
-              const kindLabel = item.role === "driver" ? "運転手" : "添乗員"
-              const kindEmoji = item.role === "driver" ? "🚗" : "👤"
+        {(() => {
+          // 今日の日付を取得（YYYY-MM-DD形式）
+          const today = toLocalYMD(new Date())
+          // 今日以前の日付のみをフィルタリング
+          const pastHistory = participationHistory.filter(
+            (item) => item.date && item.date.trim() !== "" && item.date <= today
+          )
+          
+          if (pastHistory.length === 0) {
+            return <p className="text-sm text-gray-500 border rounded p-3">参加履歴はありません。</p>
+          }
+          
+          return (
+            <div className="space-y-2">
+              {pastHistory.map((item) => {
+                const kindLabel = item.role === "driver" ? "運転手" : "添乗員"
+                const kindEmoji = item.role === "driver" ? "🚗" : "👤"
 
-              return (
-                <div key={`${item.id}-${item.role}`} className="border rounded p-3 bg-emerald-50 border-emerald-200">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {item.icon && (
-                          <img src={item.icon || "/placeholder.svg"} alt="" className="w-5 h-5 object-contain" />
-                        )}
-                        <span className="font-medium text-sm">{item.label}</span>
-                      </div>
-                      <div className="text-xs text-gray-600 mb-1">
-                        {item.date} {item.start_time}〜{item.end_time}
-                      </div>
-                      <div className="text-xs">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
-                          {kindEmoji} {kindLabel} で参加
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        確定日: {item.decided_at ? new Date(item.decided_at).toLocaleString("ja-JP") : "不明"}
+                return (
+                  <div key={`${item.id}-${item.role}`} className="border rounded p-3 bg-emerald-50 border-emerald-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {item.icon && (
+                            <img src={item.icon || "/placeholder.svg"} alt="" className="w-5 h-5 object-contain" />
+                          )}
+                          <span className="font-medium text-sm">{item.label}</span>
+                        </div>
+                        <div className="text-xs text-gray-600 mb-1">
+                          {item.date} {item.start_time}〜{item.end_time}
+                        </div>
+                        <div className="text-xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                            {kindEmoji} {kindLabel} で参加
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          確定日: {item.decided_at ? new Date(item.decided_at).toLocaleString("ja-JP") : "不明"}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
