@@ -1342,21 +1342,31 @@ export default function MainApp() {
     { key: "reunion", text: "久しぶりの利用者さんと近況を話しました。" },
   ]
 
-  // 最近の活動リストを取得（直近10件）
-  const recentActivities = useMemo(() => {
+  // カレンダーの日付選択時に、その日の参加履歴があれば定型文編集ダイアログを開く
+  const handleParticipationCalendarDateSelect = useCallback((date) => {
+    setSelectedDate(date)
+    const dateStr = toLocalYMD(date)
     const today = toLocalYMD(new Date())
-    const pastHistory = participationHistory
-      .filter((item) => item.date && item.date.trim() !== "" && item.date <= today)
-      .sort((a, b) => {
-        const dateA = a.date || ""
-        const dateB = b.date || ""
-        if (dateA !== dateB) return dateB.localeCompare(dateA)
-        return new Date(b.decided_at || 0) - new Date(a.decided_at || 0)
-      })
-      .slice(0, 10)
     
-    return pastHistory
-  }, [participationHistory])
+    // 今日以前の日付のみチェック
+    if (dateStr > today) return
+    
+    // その日の参加履歴を取得
+    const dayHistory = participationHistory.filter(
+      (item) => item.date && item.date.trim() !== "" && item.date === dateStr
+    )
+    
+    if (dayHistory.length > 0) {
+      // 最初の参加履歴のイベントIDを使用（同じ日に複数の参加がある場合は最初のもの）
+      const firstItem = dayHistory[0]
+      const note = interactionNotes[firstItem.event_id]
+      setEditingNote({
+        event_id: firstItem.event_id,
+        template_key: note?.template_key || null,
+        free_text: note?.free_text || "",
+      })
+    }
+  }, [participationHistory, interactionNotes])
 
   // 参加状況タブの内容を追加
   const renderParticipationTab = () => (
@@ -1411,72 +1421,6 @@ export default function MainApp() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* 最近のあなたの活動 */}
-      <div className="mb-6">
-        <h2 className="font-semibold mb-4 text-xl" style={{ fontSize: "20px" }}>最近のあなたの活動</h2>
-        {recentActivities.length === 0 ? (
-          <p className="text-base text-gray-500 border rounded p-4" style={{ fontSize: "16px" }}>活動履歴はありません。</p>
-        ) : (
-          <div className="space-y-4">
-            {recentActivities.map((item) => {
-              const kindLabel = item.role === "driver" || item.kind === "driver" ? "運転手" : "添乗員"
-              const note = interactionNotes[item.event_id]
-              const hasNote = note && (note.template_key || note.free_text)
-              const dateStr = item.date ? item.date.replace(/-/g, "/") : ""
-              
-              return (
-                <div key={`${item.event_id}-${item.kind}`} className="border-2 rounded-lg p-5 bg-white shadow-sm">
-                  <div className="flex items-start justify-between mb-3 gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-lg font-semibold text-gray-800 mb-2" style={{ fontSize: "18px", lineHeight: "1.6" }}>
-                        {dateStr}　{kindLabel}で参加
-                      </div>
-                      {item.label && (
-                        <div className="text-base text-gray-600 mb-2" style={{ fontSize: "16px" }}>{item.label}</div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => {
-                        setEditingNote({
-                          event_id: item.event_id,
-                          template_key: note?.template_key || null,
-                          free_text: note?.free_text || "",
-                        })
-                      }}
-                      className="px-4 py-2.5 rounded-lg border-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-300 font-semibold whitespace-nowrap flex-shrink-0"
-                      style={{ fontSize: "16px", minHeight: "44px", minWidth: "120px" }}
-                    >
-                      {hasNote ? "定型文を編集" : "定型文を追加"}
-                    </button>
-                  </div>
-                  {hasNote && (
-                    <div className="mt-4 pt-4 border-t-2 border-gray-200 bg-amber-50 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl flex-shrink-0">💬</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-amber-800 mb-2" style={{ fontSize: "15px" }}>この日のひとこと</div>
-                          {note.template_key && (
-                            <div className="text-base text-amber-900 mb-2" style={{ fontSize: "16px", lineHeight: "1.6" }}>
-                              {templateOptions.find((t) => t.key === note.template_key)?.text || note.template_key}
-                            </div>
-                          )}
-                          {note.free_text && (
-                            <div className="text-base text-amber-800 mt-2" style={{ fontSize: "16px", lineHeight: "1.6" }}>
-                              {note.template_key && <span className="font-medium">一言：</span>}
-                              {note.free_text}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
       </div>
 
       {/* 最近獲得したバッジ */}
@@ -1572,7 +1516,7 @@ export default function MainApp() {
             const nd = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + d, 1)
             setSelectedDate(nd)
           }}
-          onDateSelect={setSelectedDate}
+          onDateSelect={handleParticipationCalendarDateSelect}
           events={events}
           decidedDates={participationDates}
           cancelledDates={new Set()}
@@ -1597,34 +1541,70 @@ export default function MainApp() {
           }
           
           return (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {pastHistory.map((item) => {
-                const kindLabel = item.role === "driver" ? "運転手" : "添乗員"
-                const kindEmoji = item.role === "driver" ? "🚗" : "👤"
+                const kindLabel = item.role === "driver" || item.kind === "driver" ? "運転手" : "添乗員"
+                const kindEmoji = item.role === "driver" || item.kind === "driver" ? "🚗" : "👤"
+                const note = interactionNotes[item.event_id]
+                const hasNote = note && (note.template_key || note.free_text)
 
                 return (
-                  <div key={`${item.id}-${item.role}`} className="border rounded p-3 bg-emerald-50 border-emerald-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                  <div key={`${item.id}-${item.role}`} className="border-2 rounded-lg p-4 bg-emerald-50 border-emerald-200">
+                    <div className="flex items-start justify-between mb-2 gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
                           {item.icon && (
-                            <img src={item.icon || "/placeholder.svg"} alt="" className="w-5 h-5 object-contain" />
+                            <img src={item.icon || "/placeholder.svg"} alt="" className="w-6 h-6 object-contain" />
                           )}
-                          <span className="font-medium text-sm">{item.label}</span>
+                          <span className="font-semibold text-base" style={{ fontSize: "17px" }}>{item.label}</span>
                         </div>
-                        <div className="text-xs text-gray-600 mb-1">
+                        <div className="text-sm text-gray-700 mb-2" style={{ fontSize: "15px" }}>
                           {item.date} {item.start_time}〜{item.end_time}
                         </div>
-                        <div className="text-xs">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                        <div className="mb-2">
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-100 text-emerald-700 font-medium" style={{ fontSize: "15px" }}>
                             {kindEmoji} {kindLabel} で参加
                           </span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-sm text-gray-600" style={{ fontSize: "14px" }}>
                           確定日: {item.decided_at ? new Date(item.decided_at).toLocaleString("ja-JP") : "不明"}
                         </div>
                       </div>
+                      <button
+                        onClick={() => {
+                          setEditingNote({
+                            event_id: item.event_id,
+                            template_key: note?.template_key || null,
+                            free_text: note?.free_text || "",
+                          })
+                        }}
+                        className="px-4 py-2.5 rounded-lg border-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-300 font-semibold whitespace-nowrap flex-shrink-0"
+                        style={{ fontSize: "16px", minHeight: "44px", minWidth: "120px" }}
+                      >
+                        {hasNote ? "定型文を編集" : "定型文を追加"}
+                      </button>
                     </div>
+                    {hasNote && (
+                      <div className="mt-3 pt-3 border-t-2 border-gray-200 bg-amber-50 rounded-lg p-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-xl flex-shrink-0">💬</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-amber-800 mb-2" style={{ fontSize: "15px" }}>この日のひとこと</div>
+                            {note.template_key && (
+                              <div className="text-base text-amber-900 mb-2" style={{ fontSize: "16px", lineHeight: "1.6" }}>
+                                {templateOptions.find((t) => t.key === note.template_key)?.text || note.template_key}
+                              </div>
+                            )}
+                            {note.free_text && (
+                              <div className="text-base text-amber-800 mt-2" style={{ fontSize: "16px", lineHeight: "1.6" }}>
+                                {note.template_key && <span className="font-medium">一言：</span>}
+                                {note.free_text}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}
