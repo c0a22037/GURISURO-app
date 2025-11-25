@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import Calendar from "../components/Calendar.js"
+import ParticipationCalendar from "../components/ParticipationCalendar.js"
 import Toast from "../components/Toast.js"
 import ConfirmDialog from "../components/ConfirmDialog.js"
 import { useToast } from "../hooks/useToast.js"
@@ -1525,7 +1526,7 @@ export default function MainApp() {
 
       <div className="mb-6">
         <h2 className="font-semibold mb-4">参加履歴カレンダー</h2>
-        <Calendar
+        <ParticipationCalendar
           currentMonth={selectedDate.getMonth()}
           currentYear={selectedDate.getFullYear()}
           selectedDate={selectedDate}
@@ -1534,12 +1535,7 @@ export default function MainApp() {
             setSelectedDate(nd)
           }}
           onDateSelect={handleParticipationCalendarDateSelect}
-          events={events}
-          decidedDates={participationDates}
-          cancelledDates={new Set()}
-          decidedMembersByDate={calendarDecidedMembersByDate}
-          myAppliedEventIds={new Set()}
-          compact={true}
+          participationDates={participationDates}
         />
       </div>
 
