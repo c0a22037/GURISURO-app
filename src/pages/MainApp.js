@@ -1389,11 +1389,12 @@ export default function MainApp() {
   const renderParticipationTab = () => (
     <div>
       <div className="mb-6">
-        <h2 className="font-semibold mb-2">累計活動日数</h2>
-        <div className="border-2 border-emerald-500 rounded-lg p-6 bg-gradient-to-br from-emerald-50 to-green-50 text-center">
-          <div className="text-3xl font-extrabold text-emerald-600 mb-2">{participationCount}</div>
-          <div className="text-lg font-medium text-gray-700">日間</div>
-          <div className="text-sm text-gray-500 mt-2">活動に参加した日数</div>
+        <div className="border rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">累計活動日数</h3>
+          <div className="text-center">
+            <div className="text-2xl font-extrabold text-emerald-600 mb-1">{participationCount}</div>
+            <div className="text-sm text-gray-600">日間</div>
+          </div>
         </div>
       </div>
 
@@ -1421,22 +1422,6 @@ export default function MainApp() {
               </>
             )
           })()}
-        </div>
-      </div>
-
-      {/* 励ましメッセージ */}
-      <div className="mb-6">
-        <div className="border-l-4 border-emerald-400 bg-emerald-50 px-4 py-3 rounded">
-          <div className="text-sm font-semibold text-emerald-800 mb-1">{encouragement.title}</div>
-          <div className="text-xs text-emerald-800 leading-relaxed">{encouragement.body}</div>
-          {participationStats.thisMonthDays > 0 && (
-            <div className="text-[11px] text-emerald-700 mt-2">
-              今月の活動日数: {participationStats.thisMonthDays}日
-              {participationStats.lastMonthDays > 0 && (
-                <>（先月: {participationStats.lastMonthDays}日）</>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
