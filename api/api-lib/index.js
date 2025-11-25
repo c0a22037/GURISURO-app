@@ -1625,6 +1625,72 @@ export default async function handler(req, res) {
       }
     }
 
+    // ---- /api/interaction-notes ---- ボランティアの一言メモ取得・保存
+    if (sub === "interaction-notes") {
+      // テーブルを保証
+      await query(`
+        CREATE TABLE IF NOT EXISTS interaction_notes (
+          id BIGSERIAL PRIMARY KEY,
+          username TEXT NOT NULL,
+          event_id BIGINT NOT NULL,
+          template_key TEXT,
+          free_text TEXT,
+          created_at TIMESTAMPTZ DEFAULT now(),
+          updated_at TIMESTAMPTZ DEFAULT now(),
+          UNIQUE (username, event_id)
+        )
+      `);
+      await query(`CREATE INDEX IF NOT EXISTS idx_interaction_notes_username ON interaction_notes(username)`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_interaction_notes_event_id ON interaction_notes(event_id)`);
+
+      if (req.method === "GET") {
+        const username = q.get("username");
+        if (!username) return res.status(400).json({ error: "username が必要です" });
+
+        try {
+          const result = await query(
+            `SELECT event_id, template_key, free_text, updated_at 
+             FROM interaction_notes 
+             WHERE username = $1 
+             ORDER BY updated_at DESC`,
+            [username]
+          );
+          return res.status(200).json(result.rows);
+        } catch (err) {
+          console.error("[interaction-notes] GET Error:", err);
+          return res.status(500).json({ error: "メモの取得に失敗しました: " + (err?.message || String(err)) });
+        }
+      }
+
+      if (req.method === "POST") {
+        const { username, event_id, template_key, free_text } = body || {};
+        if (!username || !event_id) {
+          return res.status(400).json({ error: "username と event_id が必要です" });
+        }
+
+        try {
+          // 既存レコードがあればUPDATE、なければINSERT
+          const result = await query(
+            `INSERT INTO interaction_notes (username, event_id, template_key, free_text, updated_at)
+             VALUES ($1, $2, $3, $4, now())
+             ON CONFLICT (username, event_id) 
+             DO UPDATE SET 
+               template_key = $3,
+               free_text = $4,
+               updated_at = now()
+             RETURNING event_id, template_key, free_text, updated_at`,
+            [username, Number(event_id), template_key || null, free_text || null]
+          );
+          return res.status(200).json(result.rows[0] || {});
+        } catch (err) {
+          console.error("[interaction-notes] POST Error:", err);
+          return res.status(500).json({ error: "メモの保存に失敗しました: " + (err?.message || String(err)) });
+        }
+      }
+
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
     // ---- その他 404 ----
     return res.status(404).json({ error: "Not Found" });
   } catch (err) {

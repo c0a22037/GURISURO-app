@@ -110,6 +110,8 @@ export default function MainApp() {
   })
   const [participationMonthlyStats, setParticipationMonthlyStats] = useState([]) // [{ month: 'YYYY-MM', days: number }]
   const [participationRolesByDate, setParticipationRolesByDate] = useState({}) // { "YYYY-MM-DD": { driver: boolean, attendant: boolean } }
+  const [interactionNotes, setInteractionNotes] = useState({}) // { [event_id]: { template_key, free_text } }
+  const [editingNote, setEditingNote] = useState(null) // { event_id, template_key, free_text } または null
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -553,6 +555,31 @@ export default function MainApp() {
     }
   }, [userName, handleNetworkError, events])
 
+  // ---- メモ一覧取得 ----
+  const refreshInteractionNotes = useCallback(async () => {
+    if (!userName) {
+      setInteractionNotes({})
+      return
+    }
+    try {
+      const res = await apiFetch(`/api?path=interaction-notes&username=${encodeURIComponent(userName)}`, {}, handleNetworkError)
+      if (res.ok && Array.isArray(res.data)) {
+        const notesMap = {}
+        for (const note of res.data) {
+          notesMap[note.event_id] = {
+            template_key: note.template_key,
+            free_text: note.free_text,
+            updated_at: note.updated_at,
+          }
+        }
+        setInteractionNotes(notesMap)
+      }
+    } catch (e) {
+      console.error("interaction notes fetch error:", e)
+      setInteractionNotes({})
+    }
+  }, [userName, handleNetworkError])
+
   useEffect(() => {
     if (activeTab === "mypage") {
       refreshUserSettings()
@@ -560,8 +587,9 @@ export default function MainApp() {
     }
     if (activeTab === "participation") {
       refreshParticipationHistory()
+      refreshInteractionNotes()
     }
-  }, [activeTab, refreshUserSettings, refreshApplicationHistory, refreshParticipationHistory])
+  }, [activeTab, refreshUserSettings, refreshApplicationHistory, refreshParticipationHistory, refreshInteractionNotes])
 
   // ---- 通知を既読にする ----
   const markAsRead = async (id) => {
@@ -596,6 +624,37 @@ export default function MainApp() {
       showToast("設定を保存しました", "success")
     } catch (e) {
       showToast(`設定の保存に失敗しました: ${e.message}`, "error")
+    }
+  }
+
+  // ---- メモを保存 ----
+  const saveInteractionNote = async (eventId, templateKey, freeText) => {
+    if (!userName) return
+    try {
+      const res = await apiFetch(
+        `/api?path=interaction-notes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: userName,
+            event_id: eventId,
+            template_key: templateKey || null,
+            free_text: freeText || null,
+          }),
+        },
+        handleNetworkError,
+      )
+      if (res.ok) {
+        // メモ一覧を更新
+        await refreshInteractionNotes()
+        setEditingNote(null)
+        showToast("メモを保存しました", "success")
+      } else {
+        throw new Error(res.data?.error || "保存に失敗しました")
+      }
+    } catch (e) {
+      showToast(`メモの保存に失敗しました: ${e.message}`, "error")
     }
   }
 
@@ -1276,6 +1335,29 @@ export default function MainApp() {
     }
   }, [participationStats])
 
+  // 定型文の定義
+  const templateOptions = [
+    { key: "conversation", text: "往復とも会話がはずみました。" },
+    { key: "first_time", text: "初めての方とお話しできました。" },
+    { key: "reunion", text: "久しぶりの利用者さんと近況を話しました。" },
+  ]
+
+  // 最近の活動リストを取得（直近10件）
+  const recentActivities = useMemo(() => {
+    const today = toLocalYMD(new Date())
+    const pastHistory = participationHistory
+      .filter((item) => item.date && item.date.trim() !== "" && item.date <= today)
+      .sort((a, b) => {
+        const dateA = a.date || ""
+        const dateB = b.date || ""
+        if (dateA !== dateB) return dateB.localeCompare(dateA)
+        return new Date(b.decided_at || 0) - new Date(a.decided_at || 0)
+      })
+      .slice(0, 10)
+    
+    return pastHistory
+  }, [participationHistory])
+
   // 参加状況タブの内容を追加
   const renderParticipationTab = () => (
     <div>
@@ -1329,6 +1411,72 @@ export default function MainApp() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* 最近のあなたの活動 */}
+      <div className="mb-6">
+        <h2 className="font-semibold mb-4 text-xl" style={{ fontSize: "20px" }}>最近のあなたの活動</h2>
+        {recentActivities.length === 0 ? (
+          <p className="text-base text-gray-500 border rounded p-4" style={{ fontSize: "16px" }}>活動履歴はありません。</p>
+        ) : (
+          <div className="space-y-4">
+            {recentActivities.map((item) => {
+              const kindLabel = item.role === "driver" || item.kind === "driver" ? "運転手" : "添乗員"
+              const note = interactionNotes[item.event_id]
+              const hasNote = note && (note.template_key || note.free_text)
+              const dateStr = item.date ? item.date.replace(/-/g, "/") : ""
+              
+              return (
+                <div key={`${item.event_id}-${item.kind}`} className="border-2 rounded-lg p-5 bg-white shadow-sm">
+                  <div className="flex items-start justify-between mb-3 gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-lg font-semibold text-gray-800 mb-2" style={{ fontSize: "18px", lineHeight: "1.6" }}>
+                        {dateStr}　{kindLabel}で参加
+                      </div>
+                      {item.label && (
+                        <div className="text-base text-gray-600 mb-2" style={{ fontSize: "16px" }}>{item.label}</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingNote({
+                          event_id: item.event_id,
+                          template_key: note?.template_key || null,
+                          free_text: note?.free_text || "",
+                        })
+                      }}
+                      className="px-4 py-2.5 rounded-lg border-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-300 font-semibold whitespace-nowrap flex-shrink-0"
+                      style={{ fontSize: "16px", minHeight: "44px", minWidth: "120px" }}
+                    >
+                      {hasNote ? "定型文を編集" : "定型文を追加"}
+                    </button>
+                  </div>
+                  {hasNote && (
+                    <div className="mt-4 pt-4 border-t-2 border-gray-200 bg-amber-50 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl flex-shrink-0">💬</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-amber-800 mb-2" style={{ fontSize: "15px" }}>この日のひとこと</div>
+                          {note.template_key && (
+                            <div className="text-base text-amber-900 mb-2" style={{ fontSize: "16px", lineHeight: "1.6" }}>
+                              {templateOptions.find((t) => t.key === note.template_key)?.text || note.template_key}
+                            </div>
+                          )}
+                          {note.free_text && (
+                            <div className="text-base text-amber-800 mt-2" style={{ fontSize: "16px", lineHeight: "1.6" }}>
+                              {note.template_key && <span className="font-medium">一言：</span>}
+                              {note.free_text}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* 最近獲得したバッジ */}
@@ -2049,6 +2197,87 @@ export default function MainApp() {
         onConfirm={dialog.onConfirm}
         onCancel={dialog.onCancel}
       />
+
+      {/* メモ編集ダイアログ */}
+      {editingNote && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setEditingNote(null)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-semibold mb-5 text-gray-800" style={{ fontSize: "20px" }}>定型文を追加</h3>
+            
+            <div className="space-y-3 mb-5">
+              <div className="text-base font-semibold text-gray-700 mb-3" style={{ fontSize: "17px" }}>定型文を選んでください</div>
+              {templateOptions.map((template) => (
+                <button
+                  key={template.key}
+                  onClick={() => {
+                    setEditingNote({
+                      ...editingNote,
+                      template_key: editingNote.template_key === template.key ? null : template.key,
+                    })
+                  }}
+                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                    editingNote.template_key === template.key
+                      ? "border-blue-500 bg-blue-50 text-blue-900"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                  }`}
+                  style={{ fontSize: "17px", minHeight: "60px", lineHeight: "1.5" }}
+                >
+                  {template.text}
+                </button>
+              ))}
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-base font-semibold text-gray-700 mb-3" style={{ fontSize: "17px" }}>
+                ＋一言メモ（任意）
+              </label>
+              <textarea
+                value={editingNote.free_text || ""}
+                onChange={(e) => {
+                  setEditingNote({ ...editingNote, free_text: e.target.value })
+                }}
+                placeholder="自由にメモを入力できます"
+                className="w-full p-4 border-2 border-gray-300 rounded-lg resize-none"
+                rows={4}
+                style={{ fontSize: "17px", lineHeight: "1.6" }}
+                maxLength={200}
+              />
+              <div className="text-sm text-gray-500 mt-2 text-right" style={{ fontSize: "14px" }}>
+                {(editingNote.free_text || "").length}/200文字
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setEditingNote(null)}
+                className="flex-1 px-5 py-4 rounded-lg border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-semibold"
+                style={{ fontSize: "18px", minHeight: "56px" }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => {
+                  saveInteractionNote(
+                    editingNote.event_id,
+                    editingNote.template_key,
+                    editingNote.free_text
+                  )
+                }}
+                className="flex-1 px-5 py-4 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold"
+                style={{ fontSize: "18px", minHeight: "56px" }}
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -52,6 +52,20 @@ create table if not exists notifications (
   read_at timestamptz
 );
 
+-- ボランティアの一言メモテーブル
+create table if not exists interaction_notes (
+  id bigserial primary key,
+  username text not null,
+  event_id bigint not null,
+  template_key text,
+  free_text text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (username, event_id)
+);
+create index if not exists idx_interaction_notes_username on interaction_notes(username);
+create index if not exists idx_interaction_notes_event_id on interaction_notes(event_id);
+
 insert into users (username, password, role)
 values ('admin', 'admin123', 'admin')
 on conflict (username) do nothing;
