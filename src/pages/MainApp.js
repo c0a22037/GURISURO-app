@@ -96,7 +96,8 @@ export default function MainApp() {
     notifications_enabled: true,
   })
 
-  const [participationHistory, setParticipationHistory] = useState([]) // 確定された参加履歴
+  const [participationHistory, setParticipationHistory] = useState([]) // 確定された参加履歴（自分のみ）
+  const [allUsersParticipationHistory, setAllUsersParticipationHistory] = useState([]) // 全ユーザーの参加履歴
   const [participationCount, setParticipationCount] = useState(0) // 累計活動日数
   const [participationDates, setParticipationDates] = useState(new Set()) // 参加した日付のSet
   const [participationStats, setParticipationStats] = useState({
@@ -555,6 +556,21 @@ export default function MainApp() {
     }
   }, [userName, handleNetworkError, events])
 
+  // ---- 全ユーザーの運行履歴取得 ----
+  const refreshAllUsersParticipationHistory = useCallback(async () => {
+    try {
+      const res = await apiFetch(`/api?path=selections`, {}, handleNetworkError)
+      if (res.ok && Array.isArray(res.data)) {
+        setAllUsersParticipationHistory(res.data)
+      } else {
+        setAllUsersParticipationHistory([])
+      }
+    } catch (e) {
+      console.error("all users participation history fetch error:", e)
+      setAllUsersParticipationHistory([])
+    }
+  }, [handleNetworkError])
+
   // ---- メモ一覧取得 ----
   const refreshInteractionNotes = useCallback(async () => {
     if (!userName) {
@@ -588,8 +604,9 @@ export default function MainApp() {
     if (activeTab === "participation") {
       refreshParticipationHistory()
       refreshInteractionNotes()
+      refreshAllUsersParticipationHistory()
     }
-  }, [activeTab, refreshUserSettings, refreshApplicationHistory, refreshParticipationHistory, refreshInteractionNotes])
+  }, [activeTab, refreshUserSettings, refreshApplicationHistory, refreshParticipationHistory, refreshInteractionNotes, refreshAllUsersParticipationHistory])
 
   // ---- 通知を既読にする ----
   const markAsRead = async (id) => {
@@ -1374,7 +1391,7 @@ export default function MainApp() {
       <div className="mb-6">
         <h2 className="font-semibold mb-2">累計活動日数</h2>
         <div className="border-2 border-emerald-500 rounded-lg p-6 bg-gradient-to-br from-emerald-50 to-green-50 text-center">
-          <div className="text-4xl font-extrabold text-emerald-600 mb-2">{participationCount}</div>
+          <div className="text-3xl font-extrabold text-emerald-600 mb-2">{participationCount}</div>
           <div className="text-lg font-medium text-gray-700">日間</div>
           <div className="text-sm text-gray-500 mt-2">活動に参加した日数</div>
         </div>
@@ -1527,17 +1544,17 @@ export default function MainApp() {
       </div>
 
       <div>
-        <h2 className="font-semibold mb-4">参加履歴詳細</h2>
+        <h2 className="font-semibold mb-4">運行履歴詳細</h2>
         {(() => {
           // 今日の日付を取得（YYYY-MM-DD形式）
           const today = toLocalYMD(new Date())
-          // 今日以前の日付のみをフィルタリング
-          const pastHistory = participationHistory.filter(
+          // 全ユーザーの履歴から今日以前の日付のみをフィルタリング
+          const pastHistory = allUsersParticipationHistory.filter(
             (item) => item.date && item.date.trim() !== "" && item.date <= today
           )
           
           if (pastHistory.length === 0) {
-            return <p className="text-sm text-gray-500 border rounded p-3">参加履歴はありません。</p>
+            return <p className="text-base text-gray-500 border rounded p-4" style={{ fontSize: "16px" }}>運行履歴はありません。</p>
           }
           
           return (
@@ -1545,11 +1562,12 @@ export default function MainApp() {
               {pastHistory.map((item) => {
                 const kindLabel = item.role === "driver" || item.kind === "driver" ? "運転手" : "添乗員"
                 const kindEmoji = item.role === "driver" || item.kind === "driver" ? "🚗" : "👤"
-                const note = interactionNotes[item.event_id]
+                const isMyHistory = item.username === userName
+                const note = isMyHistory ? interactionNotes[item.event_id] : null
                 const hasNote = note && (note.template_key || note.free_text)
 
                 return (
-                  <div key={`${item.id}-${item.role}`} className="border-2 rounded-lg p-4 bg-emerald-50 border-emerald-200">
+                  <div key={`${item.id}-${item.username}`} className={`border-2 rounded-lg p-4 ${isMyHistory ? "bg-emerald-50 border-emerald-200" : "bg-white border-gray-200"}`}>
                     <div className="flex items-start justify-between mb-2 gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
@@ -1561,28 +1579,33 @@ export default function MainApp() {
                         <div className="text-sm text-gray-700 mb-2" style={{ fontSize: "15px" }}>
                           {item.date} {item.start_time}〜{item.end_time}
                         </div>
-                        <div className="mb-2">
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-100 text-emerald-700 font-medium" style={{ fontSize: "15px" }}>
+                        <div className="mb-2 flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg font-medium ${isMyHistory ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"}`} style={{ fontSize: "15px" }}>
                             {kindEmoji} {kindLabel} で参加
+                          </span>
+                          <span className="text-sm text-gray-600" style={{ fontSize: "14px" }}>
+                            {item.username}さん
                           </span>
                         </div>
                         <div className="text-sm text-gray-600" style={{ fontSize: "14px" }}>
                           確定日: {item.decided_at ? new Date(item.decided_at).toLocaleString("ja-JP") : "不明"}
                         </div>
                       </div>
-                      <button
-                        onClick={() => {
-                          setEditingNote({
-                            event_id: item.event_id,
-                            template_key: note?.template_key || null,
-                            free_text: note?.free_text || "",
-                          })
-                        }}
-                        className="px-4 py-2.5 rounded-lg border-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-300 font-semibold whitespace-nowrap flex-shrink-0"
-                        style={{ fontSize: "16px", minHeight: "44px", minWidth: "120px" }}
-                      >
-                        {hasNote ? "定型文を編集" : "定型文を追加"}
-                      </button>
+                      {isMyHistory && (
+                        <button
+                          onClick={() => {
+                            setEditingNote({
+                              event_id: item.event_id,
+                              template_key: note?.template_key || null,
+                              free_text: note?.free_text || "",
+                            })
+                          }}
+                          className="px-4 py-2.5 rounded-lg border-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-300 font-semibold whitespace-nowrap flex-shrink-0"
+                          style={{ fontSize: "16px", minHeight: "44px", minWidth: "120px" }}
+                        >
+                          {hasNote ? "定型文を編集" : "定型文を追加"}
+                        </button>
+                      )}
                     </div>
                     {hasNote && (
                       <div className="mt-3 pt-3 border-t-2 border-gray-200 bg-amber-50 rounded-lg p-3">
