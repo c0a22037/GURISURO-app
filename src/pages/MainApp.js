@@ -94,7 +94,10 @@ export default function MainApp() {
   const [showAllBadges, setShowAllBadges] = useState(false) // 獲得済みバッジ一覧の折り畳み（既定は非表示）
   const [userSettings, setUserSettings] = useState({
     notifications_enabled: true,
+    monthly_goal: 3,
   })
+  const [editingMonthlyGoal, setEditingMonthlyGoal] = useState(false)
+  const [tempMonthlyGoal, setTempMonthlyGoal] = useState(3)
 
   const [participationHistory, setParticipationHistory] = useState([]) // 確定された参加履歴（自分のみ）
   const [allUsersParticipationHistory, setAllUsersParticipationHistory] = useState([]) // 全ユーザーの参加履歴
@@ -240,9 +243,11 @@ export default function MainApp() {
     if (r.ok && r.data) {
       setUserSettings({
         notifications_enabled: r.data.notifications_enabled !== false,
+        monthly_goal: r.data.monthly_goal || 3,
       })
+      setTempMonthlyGoal(r.data.monthly_goal || 3)
     }
-  }, [userName])
+  }, [userName, handleNetworkError])
 
   // ---- 応募履歴取得 ----
   const refreshApplicationHistory = useCallback(async () => {
@@ -602,6 +607,7 @@ export default function MainApp() {
       refreshApplicationHistory()
     }
     if (activeTab === "participation") {
+      refreshUserSettings()
       refreshParticipationHistory()
       refreshInteractionNotes()
       refreshAllUsersParticipationHistory()
@@ -1401,9 +1407,20 @@ export default function MainApp() {
       {/* 今月の目標 */}
       <div className="mb-6">
         <div className="border rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">今月の目標</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-700">今月の目標</h3>
+            <button
+              onClick={() => {
+                setTempMonthlyGoal(userSettings.monthly_goal || 3)
+                setEditingMonthlyGoal(true)
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 underline"
+            >
+              編集
+            </button>
+          </div>
           {(() => {
-            const MONTHLY_GOAL = 3
+            const MONTHLY_GOAL = userSettings.monthly_goal || 3
             const done = participationStats.thisMonthDays
             const ratio = Math.min(1, MONTHLY_GOAL === 0 ? 0 : done / MONTHLY_GOAL)
             const percent = Math.round(ratio * 100)
@@ -1424,6 +1441,71 @@ export default function MainApp() {
           })()}
         </div>
       </div>
+
+      {/* 今月の目標編集ダイアログ */}
+      {editingMonthlyGoal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">今月の目標を設定</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                目標日数
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="31"
+                value={tempMonthlyGoal}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10)
+                  if (!isNaN(val) && val >= 0 && val <= 31) {
+                    setTempMonthlyGoal(val)
+                  } else if (e.target.value === "") {
+                    setTempMonthlyGoal(0)
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="目標日数を入力"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  const newSettings = { ...userSettings, monthly_goal: tempMonthlyGoal }
+                  setUserSettings(newSettings)
+                  try {
+                    await apiFetch(
+                      `/api?path=user-settings`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(newSettings),
+                      },
+                      handleNetworkError,
+                    )
+                    showToast("目標を保存しました", "success")
+                  } catch (e) {
+                    showToast(`目標の保存に失敗しました: ${e.message}`, "error")
+                  }
+                  setEditingMonthlyGoal(false)
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                保存
+              </button>
+              <button
+                onClick={() => {
+                  setEditingMonthlyGoal(false)
+                  setTempMonthlyGoal(userSettings.monthly_goal || 3)
+                }}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 最近獲得したバッジ */}
       <div className="mb-6">

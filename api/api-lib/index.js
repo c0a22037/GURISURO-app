@@ -1151,6 +1151,7 @@ export default async function handler(req, res) {
           google_access_token TEXT,
           google_refresh_token TEXT,
           google_token_expires_at TIMESTAMPTZ,
+          monthly_goal INTEGER DEFAULT 3,
           updated_at TIMESTAMPTZ DEFAULT now()
         )
       `);
@@ -1161,7 +1162,8 @@ export default async function handler(req, res) {
           ALTER TABLE user_settings 
           ADD COLUMN IF NOT EXISTS google_access_token TEXT,
           ADD COLUMN IF NOT EXISTS google_refresh_token TEXT,
-          ADD COLUMN IF NOT EXISTS google_token_expires_at TIMESTAMPTZ
+          ADD COLUMN IF NOT EXISTS google_token_expires_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS monthly_goal INTEGER DEFAULT 3
         `);
       } catch (e) {
         // カラムが既に存在する場合は無視
@@ -1171,7 +1173,8 @@ export default async function handler(req, res) {
       if (req.method === "GET") {
         const r = await query(
           `SELECT notifications_enabled, google_calendar_enabled, google_calendar_id,
-                  google_access_token IS NOT NULL AS has_google_token
+                  google_access_token IS NOT NULL AS has_google_token,
+                  monthly_goal
            FROM user_settings 
            WHERE username = $1`,
           [session.username]
@@ -1181,6 +1184,7 @@ export default async function handler(req, res) {
           google_calendar_enabled: false,
           google_calendar_id: null,
           has_google_token: false,
+          monthly_goal: 3,
         };
         // トークンは送信しない（セキュリティ）
         return res.status(200).json({
@@ -1188,24 +1192,27 @@ export default async function handler(req, res) {
           google_calendar_enabled: settings.google_calendar_enabled,
           google_calendar_id: settings.google_calendar_id,
           has_google_token: settings.has_google_token || false,
+          monthly_goal: settings.monthly_goal || 3,
         });
       }
 
       if (req.method === "POST") {
-        const { notifications_enabled, google_calendar_enabled, google_calendar_id } = body || {};
+        const { notifications_enabled, google_calendar_enabled, google_calendar_id, monthly_goal } = body || {};
         await query(
-          `INSERT INTO user_settings (username, notifications_enabled, google_calendar_enabled, google_calendar_id, updated_at)
-           VALUES ($1, $2, $3, $4, now())
+          `INSERT INTO user_settings (username, notifications_enabled, google_calendar_enabled, google_calendar_id, monthly_goal, updated_at)
+           VALUES ($1, $2, $3, $4, $5, now())
            ON CONFLICT (username) DO UPDATE SET
              notifications_enabled = $2,
              google_calendar_enabled = $3,
              google_calendar_id = $4,
+             monthly_goal = $5,
              updated_at = now()`,
           [
             session.username,
             notifications_enabled !== false,
             google_calendar_enabled === true,
             google_calendar_id || null,
+            monthly_goal !== undefined ? parseInt(monthly_goal, 10) : 3,
           ]
         );
         return res.status(200).json({ ok: true });
