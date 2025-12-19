@@ -241,7 +241,7 @@ export default function MainApp() {
     if (!userName) return
     const r = await apiFetch(`/api?path=user-settings`, {}, handleNetworkError)
     if (r.ok && r.data) {
-      const monthlyGoal = r.data.monthly_goal || 3
+      const monthlyGoal = r.data.monthly_goal ?? 3
       setUserSettings({
         notifications_enabled: r.data.notifications_enabled !== false,
         monthly_goal: monthlyGoal,
@@ -1412,7 +1412,7 @@ export default function MainApp() {
             <h3 className="text-sm font-semibold text-gray-700">今月の目標</h3>
             <button
               onClick={() => {
-                const currentGoal = userSettings.monthly_goal || 3
+                const currentGoal = userSettings.monthly_goal ?? 3
                 setTempMonthlyGoal(currentGoal === 0 ? "" : String(currentGoal))
                 setEditingMonthlyGoal(true)
               }}
@@ -1422,7 +1422,7 @@ export default function MainApp() {
             </button>
           </div>
           {(() => {
-            const MONTHLY_GOAL = userSettings.monthly_goal || 3
+            const MONTHLY_GOAL = userSettings.monthly_goal ?? 3
             const done = participationStats.thisMonthDays
             const ratio = Math.min(1, MONTHLY_GOAL === 0 ? 0 : done / MONTHLY_GOAL)
             const percent = Math.round(ratio * 100)
@@ -1518,7 +1518,7 @@ export default function MainApp() {
               <button
                 onClick={() => {
                   setEditingMonthlyGoal(false)
-                  const currentGoal = userSettings.monthly_goal || 3
+                  const currentGoal = userSettings.monthly_goal ?? 3
                   setTempMonthlyGoal(currentGoal === 0 ? "" : String(currentGoal))
                 }}
                 className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
