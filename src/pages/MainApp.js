@@ -1457,11 +1457,22 @@ export default function MainApp() {
                 max="31"
                 value={tempMonthlyGoal}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value, 10)
+                  let inputValue = e.target.value
+                  // 空の場合は0に設定
+                  if (inputValue === "") {
+                    setTempMonthlyGoal(0)
+                    return
+                  }
+                  // 先頭の0を削除（ただし「0」だけの場合は0として扱う）
+                  if (inputValue.length > 1 && inputValue.startsWith("0")) {
+                    inputValue = inputValue.replace(/^0+/, "")
+                    if (inputValue === "") {
+                      inputValue = "0"
+                    }
+                  }
+                  const val = parseInt(inputValue, 10)
                   if (!isNaN(val) && val >= 0 && val <= 31) {
                     setTempMonthlyGoal(val)
-                  } else if (e.target.value === "") {
-                    setTempMonthlyGoal(0)
                   }
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
