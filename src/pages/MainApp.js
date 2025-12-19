@@ -97,7 +97,7 @@ export default function MainApp() {
     monthly_goal: 3,
   })
   const [editingMonthlyGoal, setEditingMonthlyGoal] = useState(false)
-  const [tempMonthlyGoal, setTempMonthlyGoal] = useState(3)
+  const [tempMonthlyGoal, setTempMonthlyGoal] = useState("") // 文字列型で空文字列も許可
 
   const [participationHistory, setParticipationHistory] = useState([]) // 確定された参加履歴（自分のみ）
   const [allUsersParticipationHistory, setAllUsersParticipationHistory] = useState([]) // 全ユーザーの参加履歴
@@ -241,11 +241,12 @@ export default function MainApp() {
     if (!userName) return
     const r = await apiFetch(`/api?path=user-settings`, {}, handleNetworkError)
     if (r.ok && r.data) {
+      const monthlyGoal = r.data.monthly_goal || 3
       setUserSettings({
         notifications_enabled: r.data.notifications_enabled !== false,
-        monthly_goal: r.data.monthly_goal || 3,
+        monthly_goal: monthlyGoal,
       })
-      setTempMonthlyGoal(r.data.monthly_goal || 3)
+      setTempMonthlyGoal(monthlyGoal === 0 ? "" : String(monthlyGoal))
     }
   }, [userName, handleNetworkError])
 
@@ -1411,7 +1412,8 @@ export default function MainApp() {
             <h3 className="text-sm font-semibold text-gray-700">今月の目標</h3>
             <button
               onClick={() => {
-                setTempMonthlyGoal(userSettings.monthly_goal || 3)
+                const currentGoal = userSettings.monthly_goal || 3
+                setTempMonthlyGoal(currentGoal === 0 ? "" : String(currentGoal))
                 setEditingMonthlyGoal(true)
               }}
               className="text-xs text-blue-600 hover:text-blue-800 underline"
@@ -1458,9 +1460,9 @@ export default function MainApp() {
                 value={tempMonthlyGoal}
                 onChange={(e) => {
                   let inputValue = e.target.value
-                  // 空の場合は0に設定
+                  // 空の場合は空文字列を保持
                   if (inputValue === "") {
-                    setTempMonthlyGoal(0)
+                    setTempMonthlyGoal("")
                     return
                   }
                   // 先頭の0を削除（ただし「0」だけの場合は0として扱う）
@@ -1472,7 +1474,7 @@ export default function MainApp() {
                   }
                   const val = parseInt(inputValue, 10)
                   if (!isNaN(val) && val >= 0 && val <= 31) {
-                    setTempMonthlyGoal(val)
+                    setTempMonthlyGoal(String(val))
                   }
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1482,7 +1484,16 @@ export default function MainApp() {
             <div className="flex gap-2">
               <button
                 onClick={async () => {
-                  const newSettings = { ...userSettings, monthly_goal: tempMonthlyGoal }
+                  // 空欄の場合は自動的に0として扱う
+                  let goalValue = 0
+                  if (tempMonthlyGoal !== "" && tempMonthlyGoal !== null && tempMonthlyGoal !== undefined) {
+                    goalValue = parseInt(tempMonthlyGoal, 10)
+                    if (isNaN(goalValue) || goalValue < 0 || goalValue > 31) {
+                      showToast("0から31の間で入力してください", "error")
+                      return
+                    }
+                  }
+                  const newSettings = { ...userSettings, monthly_goal: goalValue }
                   setUserSettings(newSettings)
                   try {
                     await apiFetch(
@@ -1507,7 +1518,8 @@ export default function MainApp() {
               <button
                 onClick={() => {
                   setEditingMonthlyGoal(false)
-                  setTempMonthlyGoal(userSettings.monthly_goal || 3)
+                  const currentGoal = userSettings.monthly_goal || 3
+                  setTempMonthlyGoal(currentGoal === 0 ? "" : String(currentGoal))
                 }}
                 className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
               >
