@@ -1677,9 +1677,6 @@ export default function MainApp() {
                             {item.username}さん
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600" style={{ fontSize: "14px" }}>
-                          確定日: {item.decided_at ? new Date(item.decided_at).toLocaleString("ja-JP") : "不明"}
-                        </div>
                       </div>
                       {isMyHistory && (
                         <button
