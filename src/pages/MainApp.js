@@ -45,7 +45,7 @@ export default function MainApp() {
   const [userName, setUserName] = useState("")
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const userRolePref = localStorage.getItem("userRolePref") || "両方" // 任意（運転手/添乗員/両方）
-
+  
   // ページロード時にクッキーからセッションを復元
   useEffect(() => {
     // ログアウト直後の場合は自動ログインをスキップ
@@ -62,7 +62,7 @@ export default function MainApp() {
         setUserName(storedName)
         return
       }
-
+      
       // localStorageにない場合、クッキーから復元
       try {
         const { ok, data } = await apiFetch("/api?path=me", {}, handleNetworkError)
@@ -154,23 +154,23 @@ export default function MainApp() {
       type: "info",
     })
     if (!confirmed) return
-
+    
     // ログアウトフラグを設定（自動ログインを防ぐ）
     sessionStorage.setItem("justLoggedOut", "true")
-
+    
     // ログアウトAPIを呼び出してクッキーを削除
     try {
       await fetch("/api?path=logout", { method: "POST", credentials: "include" })
     } catch (e) {
       console.error("Logout API error:", e)
     }
-
+    
     // localStorageをクリア
     localStorage.clear()
-
+    
     // クッキーが削除されるまで少し待ってからリロード
     await new Promise((resolve) => setTimeout(resolve, 100))
-
+    
     // ログインページへ移動（リロードは不要）
     window.location.href = "/"
   }
@@ -621,9 +621,9 @@ export default function MainApp() {
       await apiFetch(
         `/api?path=notifications`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
         },
         handleNetworkError,
       )
@@ -639,9 +639,9 @@ export default function MainApp() {
       await apiFetch(
         `/api?path=user-settings`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(userSettings),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userSettings),
         },
         handleNetworkError,
       )
@@ -743,7 +743,7 @@ export default function MainApp() {
       const ymd = toLocalYMD(selectedDate)
       const todays = events.filter((e) => e.date === ymd)
       const out = {}
-
+      
       for (const ev of todays) {
         try {
           const appsRes = await apiFetch(`/api/applications?event_id=${ev.id}`, {}, handleNetworkError).catch(() => ({
@@ -767,13 +767,13 @@ export default function MainApp() {
         for (const eventId of myEventIds) {
           const ev = events.find((e) => e.id === eventId)
           if (!ev) continue
-
+          
           const evDecided = allDecidedByEventId[eventId]
           if (evDecided) {
-            const isMyDecided =
+            const isMyDecided = 
               (Array.isArray(evDecided.driver) && evDecided.driver.includes(userName)) ||
               (Array.isArray(evDecided.attendant) && evDecided.attendant.includes(userName))
-
+            
             if (isMyDecided) {
               decDateSet.add(ev.date)
             }
@@ -830,7 +830,7 @@ export default function MainApp() {
   const decidedDatesKey = useMemo(() => {
     return Array.from(decidedDates).sort().join(",")
   }, [decidedDates])
-
+  
   const cancelledDatesKey = useMemo(() => {
     return Array.from(cancelledDates).sort().join(",")
   }, [cancelledDates])
@@ -850,7 +850,7 @@ export default function MainApp() {
       .sort()
       .join(",")
   }, [myApps])
-
+  
   const memoizedMyAppliedEventIds = useMemo(() => {
     return new Set(myApps.map((a) => a.event_id))
   }, [myAppsKey])
@@ -860,7 +860,7 @@ export default function MainApp() {
       showToast("先にログインしてください。", "error")
       return
     }
-
+    
     // 確定済みチェック（自分がその役割で確定済みの場合は応募変更不可）
     const dec = decided[ev.id] || { driver: [], attendant: [] }
     const isDecided = (kind === "driver" ? dec.driver : dec.attendant).includes(userName)
@@ -869,7 +869,7 @@ export default function MainApp() {
       showToast(`このイベントの${kindLabel}として既に確定済みです。確定済みの役割の応募は変更できません。`, "warning")
       return
     }
-
+    
     // 同じイベントで既に別の役割に応募しているかチェック
     const hasAppliedOtherKind = myApps.some((a) => a.event_id === ev.id && a.kind !== kind)
     if (hasAppliedOtherKind) {
@@ -881,15 +881,15 @@ export default function MainApp() {
       )
       return
     }
-
+    
     setApplying(true)
     try {
       const { ok, status, data } = await apiFetch(
         "/api/applications",
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ event_id: ev.id, username: userName, kind }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: ev.id, username: userName, kind }),
         },
         handleNetworkError,
       )
@@ -925,9 +925,9 @@ export default function MainApp() {
       const { ok, status, data } = await apiFetch(
         "/api?path=cancel",
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ event_id: ev.id, kind }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: ev.id, kind }),
         },
         handleNetworkError,
       )
@@ -1006,7 +1006,7 @@ export default function MainApp() {
                 }
               }
             }
-
+            
             return (
               <li
                 key={n.id}
@@ -1042,7 +1042,7 @@ export default function MainApp() {
   const renderMypageTab = () => (
     <div>
       <h2 className="font-semibold mb-4">マイページ</h2>
-
+      
       {/* アカウント情報 */}
       <div className="mb-6">
         <h3 className="font-semibold mb-2">アカウント情報</h3>
@@ -1095,7 +1095,7 @@ export default function MainApp() {
               if (!app.event) return null
               const kindLabel = app.kind === "driver" ? "運転手" : "添乗員"
               const kindEmoji = app.kind === "driver" ? "🚗" : "👤"
-
+              
               return (
                 <div
                   key={`${app.id}-${app.kind}`}
@@ -1115,7 +1115,7 @@ export default function MainApp() {
                       <div className="text-xs">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded ${
-                            app.isDecided ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
+                          app.isDecided ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
                           }`}
                         >
                           {kindEmoji} {kindLabel}
@@ -1410,17 +1410,17 @@ export default function MainApp() {
         <div className="border rounded-lg p-4 bg-white">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-700">今月の目標</h3>
-            <button
+      <button
               onClick={() => {
                 const currentGoal = userSettings.monthly_goal ?? 3
                 setTempMonthlyGoal(currentGoal === 0 ? "" : String(currentGoal))
                 setEditingMonthlyGoal(true)
               }}
               className="text-xs text-blue-600 hover:text-blue-800 underline"
-            >
+      >
               目標設定
-            </button>
-          </div>
+      </button>
+    </div>
           {(() => {
             const MONTHLY_GOAL = userSettings.monthly_goal ?? 3
             const done = participationStats.thisMonthDays
@@ -1825,199 +1825,199 @@ export default function MainApp() {
 
   return (
     <>
-      <div
-        className="min-h-screen"
-        style={{
+    <div 
+      className="min-h-screen"
+      style={{ 
           backgroundColor: "#f0fdf4",
           paddingBottom: "calc(80px + env(safe-area-inset-bottom))",
           marginBottom: 0,
-        }}
-      >
-        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg border border-green-100 p-4 sm:p-6">
-          {/* ヘッダー（ログアウト追加） */}
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-xl font-bold">グリスロ予定調整アプリ</h1>
-            <div className="flex items-center gap-3 flex-wrap">
-              {userName && <span className="text-sm text-gray-600">ログイン中：{userName}</span>}
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1 rounded bg-red-500 text-white text-sm hover:bg-red-600"
-              >
-                ログアウト
-              </button>
-            </div>
+      }}
+    >
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg border border-green-100 p-4 sm:p-6">
+        {/* ヘッダー（ログアウト追加） */}
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold">グリスロ予定調整アプリ</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            {userName && <span className="text-sm text-gray-600">ログイン中：{userName}</span>}
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1 rounded bg-red-500 text-white text-sm hover:bg-red-600"
+            >
+              ログアウト
+            </button>
           </div>
+        </div>
 
-          {/* タブコンテンツ */}
-          {activeTab === "calendar" && (
-            <>
-              <Calendar
-                currentMonth={selectedDate.getMonth()}
-                currentYear={selectedDate.getFullYear()}
-                selectedDate={selectedDate}
-                onMonthChange={(d) => {
+        {/* タブコンテンツ */}
+        {activeTab === "calendar" && (
+          <>
+            <Calendar
+              currentMonth={selectedDate.getMonth()}
+              currentYear={selectedDate.getFullYear()}
+              selectedDate={selectedDate}
+              onMonthChange={(d) => {
                   const nd = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + d, 1)
                   setSelectedDate(nd)
-                }}
-                onDateSelect={setSelectedDate}
-                events={events}
-                decidedDates={memoizedDecidedDates}
-                cancelledDates={memoizedCancelledDates}
-                decidedMembersByDate={calendarDecidedMembersByDate}
-                myAppliedEventIds={memoizedMyAppliedEventIds}
-                compact={true}
-              />
+              }}
+              onDateSelect={setSelectedDate}
+              events={events}
+              decidedDates={memoizedDecidedDates}
+              cancelledDates={memoizedCancelledDates}
+              decidedMembersByDate={calendarDecidedMembersByDate}
+              myAppliedEventIds={memoizedMyAppliedEventIds}
+              compact={true}
+            />
 
-              <div className="mt-4">
-                <h2 className="font-semibold mb-2">{toLocalYMD(selectedDate)} の募集</h2>
-                {listOfSelected.length === 0 ? (
-                  <p className="text-sm text-gray-500">この日には募集がありません。</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {listOfSelected.map((ev) => {
+            <div className="mt-4">
+              <h2 className="font-semibold mb-2">{toLocalYMD(selectedDate)} の募集</h2>
+              {listOfSelected.length === 0 ? (
+                <p className="text-sm text-gray-500">この日には募集がありません。</p>
+              ) : (
+                <ul className="space-y-2">
+                  {listOfSelected.map((ev) => {
                       const c = counts[ev.id] || { driver: 0, attendant: 0 }
                       const dec = decided[ev.id] || { driver: [], attendant: [] }
-                      const remainDriver =
+                    const remainDriver =
                         ev.capacity_driver != null ? Math.max(0, ev.capacity_driver - c.driver) : null
-                      const remainAtt =
+                    const remainAtt =
                         ev.capacity_attendant != null ? Math.max(0, ev.capacity_attendant - c.attendant) : null
 
                       const appliedDriver = hasApplied(ev.id, "driver")
                       const appliedAtt = hasApplied(ev.id, "attendant")
-
-                      // 同じイベントで既に別の役割に応募しているかチェック
+                    
+                    // 同じイベントで既に別の役割に応募しているかチェック
                       const hasAppliedOtherKindDriver = appliedAtt // 添乗員に応募している場合、運転手は無効
                       const hasAppliedOtherKindAttendant = appliedDriver // 運転手に応募している場合、添乗員は無効
-
+                    
                       const hasDecidedDriver = dec.driver.length > 0
                       const hasDecidedAttendant = dec.attendant.length > 0
                       const isDecidedDriver = dec.driver.includes(userName)
                       const isDecidedAttendant = dec.attendant.includes(userName)
 
-                      return (
-                        <li key={ev.id} className="border rounded p-3 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {(() => {
-                              // フリー運行・循環運行のアイコンを取得
+                    return (
+                      <li key={ev.id} className="border rounded p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {(() => {
+                            // フリー運行・循環運行のアイコンを取得
                               let eventIcon = ev.icon || ""
-                              if (ev.label && (ev.label.includes("フリー運行") || ev.label.includes("循環運行"))) {
+                            if (ev.label && (ev.label.includes("フリー運行") || ev.label.includes("循環運行"))) {
                                 eventIcon = "/icons/app-icon-180.png"
-                              }
+                            }
                               return eventIcon ? (
                                 <img src={eventIcon || "/placeholder.svg"} alt="" className="w-6 h-6" />
                               ) : null
-                            })()}
-                            <div>
-                              <div className="font-medium">{ev.label}</div>
-                              <div className="text-xs text-gray-500">
-                                {ev.start_time}〜{ev.end_time}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                運転手: {c.driver}人
-                                {hasDecidedDriver && (
+                          })()}
+                          <div>
+                            <div className="font-medium">{ev.label}</div>
+                            <div className="text-xs text-gray-500">
+                              {ev.start_time}〜{ev.end_time}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              運転手: {c.driver}人
+                              {hasDecidedDriver && (
                                   <span className="text-blue-600 font-semibold">【確定: {dec.driver.join(", ")}】</span>
-                                )}
-                                {isDecidedDriver && (
-                                  <span className="text-green-600 font-semibold ml-1">✓ あなたが確定済み</span>
-                                )}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                添乗員: {c.attendant}人
-                                {hasDecidedAttendant && (
-                                  <span className="text-blue-600 font-semibold">
-                                    【確定: {dec.attendant.join(", ")}】
-                                  </span>
-                                )}
-                                {isDecidedAttendant && (
-                                  <span className="text-green-600 font-semibold ml-1">✓ あなたが確定済み</span>
-                                )}
-                              </div>
+                              )}
+                              {isDecidedDriver && (
+                                <span className="text-green-600 font-semibold ml-1">✓ あなたが確定済み</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              添乗員: {c.attendant}人
+                              {hasDecidedAttendant && (
+                                <span className="text-blue-600 font-semibold">
+                                  【確定: {dec.attendant.join(", ")}】
+                                </span>
+                              )}
+                              {isDecidedAttendant && (
+                                <span className="text-green-600 font-semibold ml-1">✓ あなたが確定済み</span>
+                              )}
                             </div>
                           </div>
+                        </div>
 
-                          <div className="flex gap-2">
+                        <div className="flex gap-2">
                             {["運転手", "両方"].includes(userRolePref) &&
                               (isDecidedDriver ? (
-                                <button
-                                  className="px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={applying}
-                                  onClick={() => cancelDecided(ev, "driver")}
-                                >
-                                  {applying ? "処理中..." : "キャンセル（運転手）"}
-                                </button>
-                              ) : appliedDriver ? (
-                                <button
-                                  className="px-3 py-1 rounded bg-gray-200 text-gray-700 text-sm hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={applying}
-                                  onClick={() => cancel(ev, "driver")}
-                                >
-                                  {applying ? "処理中..." : "応募取消（運転手）"}
-                                </button>
-                              ) : (
-                                <button
-                                  className="px-3 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={applying || hasDecidedDriver || hasAppliedOtherKindDriver}
-                                  onClick={() => apply(ev, "driver")}
+                              <button
+                                className="px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={applying}
+                                onClick={() => cancelDecided(ev, "driver")}
+                              >
+                                {applying ? "処理中..." : "キャンセル（運転手）"}
+                              </button>
+                            ) : appliedDriver ? (
+                              <button
+                                className="px-3 py-1 rounded bg-gray-200 text-gray-700 text-sm hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={applying}
+                                onClick={() => cancel(ev, "driver")}
+                              >
+                                {applying ? "処理中..." : "応募取消（運転手）"}
+                              </button>
+                            ) : (
+                              <button
+                                className="px-3 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={applying || hasDecidedDriver || hasAppliedOtherKindDriver}
+                                onClick={() => apply(ev, "driver")}
                                   title={
                                     hasAppliedOtherKindDriver ? "このイベントには既に添乗員として応募しています" : ""
                                   }
-                                >
-                                  {applying ? "処理中..." : "運転手で応募"}
-                                </button>
+                              >
+                                {applying ? "処理中..." : "運転手で応募"}
+                              </button>
                               ))}
                             {["添乘員", "両方"].includes(userRolePref) &&
                               (isDecidedAttendant ? (
-                                <button
-                                  className="px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={applying}
-                                  onClick={() => cancelDecided(ev, "attendant")}
-                                >
-                                  {applying ? "処理中..." : "キャンセル（添乗員）"}
-                                </button>
-                              ) : appliedAtt ? (
-                                <button
-                                  className="px-3 py-1 rounded bg-gray-200 text-gray-700 text-sm hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={applying}
-                                  onClick={() => cancel(ev, "attendant")}
-                                >
-                                  {applying ? "処理中..." : "応募取消（添乗員）"}
-                                </button>
-                              ) : (
-                                <button
-                                  className="px-3 py-1 rounded bg-emerald-600 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={applying || hasDecidedAttendant || hasAppliedOtherKindAttendant}
-                                  onClick={() => apply(ev, "attendant")}
+                              <button
+                                className="px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={applying}
+                                onClick={() => cancelDecided(ev, "attendant")}
+                              >
+                                {applying ? "処理中..." : "キャンセル（添乗員）"}
+                              </button>
+                            ) : appliedAtt ? (
+                              <button
+                                className="px-3 py-1 rounded bg-gray-200 text-gray-700 text-sm hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={applying}
+                                onClick={() => cancel(ev, "attendant")}
+                              >
+                                {applying ? "処理中..." : "応募取消（添乗員）"}
+                              </button>
+                            ) : (
+                              <button
+                                className="px-3 py-1 rounded bg-emerald-600 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={applying || hasDecidedAttendant || hasAppliedOtherKindAttendant}
+                                onClick={() => apply(ev, "attendant")}
                                   title={
                                     hasAppliedOtherKindAttendant ? "このイベントには既に運転手として応募しています" : ""
                                   }
-                                >
-                                  {applying ? "処理中..." : "添乗員で応募"}
-                                </button>
+                              >
+                                {applying ? "処理中..." : "添乗員で応募"}
+                              </button>
                               ))}
-                          </div>
-                        </li>
+                        </div>
+                      </li>
                       )
-                    })}
-                  </ul>
-                )}
-              </div>
-            </>
-          )}
-          {activeTab === "apply" && renderApplyTab()}
-          {activeTab === "notifications" && renderNotificationsTab()}
+                  })}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+        {activeTab === "apply" && renderApplyTab()}
+        {activeTab === "notifications" && renderNotificationsTab()}
           {activeTab === "participation" && renderParticipationTab()}
-          {activeTab === "mypage" && renderMypageTab()}
-        </div>
+        {activeTab === "mypage" && renderMypageTab()}
       </div>
+    </div>
 
       {/* 固定タブバー */}
-      <div
-        id="main-tab-bar"
-        style={{
+      <div 
+      id="main-tab-bar"
+      style={{ 
           position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
           width: "100%",
           minHeight: "72px",
           backgroundColor: "rgba(255,255,255,0.92)",
@@ -2026,21 +2026,23 @@ export default function MainApp() {
           borderTop: "1px solid #e5e7eb",
           boxShadow: "0 -6px 12px -6px rgba(0,0,0,0.12)",
           WebkitBoxShadow: "0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06)",
-          zIndex: 99999,
+        zIndex: editingNote ? 40 : 99999,
           display: "flex",
           WebkitDisplay: "flex",
           alignItems: "center",
           WebkitAlignItems: "center",
           visibility: "visible",
-          opacity: 1,
-          WebkitTransform: "translateZ(0)",
-          transform: "translateZ(0)",
+        opacity: 1,
+          WebkitTransform: editingNote ? "translateY(100%)" : "translateZ(0)",
+          transform: editingNote ? "translateY(100%)" : "translateZ(0)",
+          transition: "transform 0.3s ease-in-out",
+          WebkitTransition: "transform 0.3s ease-in-out",
           willChange: "transform",
           WebkitBackfaceVisibility: "hidden",
           backfaceVisibility: "hidden",
           paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
+      }}
+    >
         <div
           style={{
             maxWidth: "896px",
@@ -2266,7 +2268,7 @@ export default function MainApp() {
           </button>
         </div>
       </div>
-
+      
       {/* トースト通知 */}
       <Toast
         message={toast.message}
@@ -2275,7 +2277,7 @@ export default function MainApp() {
         onClose={hideToast}
         duration={toast.duration}
       />
-
+      
       {/* 確認ダイアログ */}
       <ConfirmDialog
         visible={dialog.visible}
