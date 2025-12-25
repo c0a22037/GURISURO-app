@@ -1690,7 +1690,7 @@ export default function MainApp() {
                           className="px-4 py-2.5 rounded-lg border-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-300 font-semibold whitespace-nowrap flex-shrink-0"
                           style={{ fontSize: "16px", minHeight: "44px", minWidth: "120px" }}
                         >
-                          {hasNote ? "定型文を編集" : "定型文を追加"}
+                          一言メモを記入
                         </button>
                       )}
                     </div>
@@ -2338,10 +2338,10 @@ export default function MainApp() {
                 className="w-full p-4 border-2 border-gray-300 rounded-lg resize-none"
                 rows={4}
                 style={{ fontSize: "17px", lineHeight: "1.6" }}
-                maxLength={200}
+                maxLength={1000}
               />
               <div className="text-sm text-gray-500 mt-2 text-right" style={{ fontSize: "14px" }}>
-                {(editingNote.free_text || "").length}/200文字
+                {(editingNote.free_text || "").length}/1000文字
               </div>
             </div>
 
